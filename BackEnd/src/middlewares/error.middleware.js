@@ -1,4 +1,3 @@
-// Error handling middleware
 const errorHandler = (err, req, res, next) => {
   console.error('[Error]', {
     message: err.message,
@@ -8,7 +7,6 @@ const errorHandler = (err, req, res, next) => {
     method: req.method
   });
 
-  // Validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       message: 'Validation error',
@@ -17,7 +15,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Cast errors
   if (err.name === 'CastError') {
     return res.status(400).json({
       message: 'Invalid ID format',
@@ -25,7 +22,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
       message: 'Invalid token',
@@ -40,7 +36,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Custom errors
   if (err.statusCode) {
     return res.status(err.statusCode).json({
       message: err.message,
@@ -48,7 +43,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error
   res.status(500).json({
     message: err.message || 'Internal server error',
     success: false

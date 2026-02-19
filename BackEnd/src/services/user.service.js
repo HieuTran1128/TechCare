@@ -55,16 +55,47 @@ async function uploadAvatar(userId, file) {
 }
 
 // Lấy tất cả nhân viên
-async function getAllUsers() {
-  const users = await User.find(
-    {},
-    {
-      passwordHash: 0,
-      invitationToken: 0
-    }
-  ).sort({ createdAt: -1 });
+async function getAllUsers(role) {
+  const query = {};
+  console.log('[getAllUsers Service] Input role param:', role, 'type:', typeof role);
+  
+  if (role) {
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase() : role;
+    query.role = normalizedRole;
+    console.log('[getAllUsers Service] Searching for role:', normalizedRole);
+  }
+  
+  console.log('[getAllUsers Service] MongoDB query filter:', JSON.stringify(query));
 
-  return users;
+  try {
+    const users = await User.find(
+      query,
+      {
+        passwordHash: 0,
+        invitationToken: 0
+      }
+    ).sort({ createdAt: -1 });
+
+    console.log('[getAllUsers Service] Query returned:', users.length, 'users');
+    
+    if (users.length === 0 && role) {
+      const allUsersDebug = await User.find({}, { fullName: 1, role: 1 });
+      console.log('[getAllUsers Service] DEBUG: All users in DB with roles:', JSON.stringify(
+        allUsersDebug.map(u => ({ fullName: u.fullName, role: u.role, roleType: typeof u.role })),
+        null,
+        2
+      ));
+    }
+    
+    if (users.length > 0) {
+      console.log('[getAllUsers Service] First 3 users:', users.slice(0, 3).map(u => ({ fullName: u.fullName, role: u.role, status: u.status })));
+    }
+
+    return users;
+  } catch (err) {
+    console.error('[getAllUsers Service] Database query error:', err.message);
+    throw err;
+  }
 }
 
 async function updateProfile(userId, data) {

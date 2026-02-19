@@ -141,18 +141,17 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-// AuthContext.tsx (chỉ thêm phần này, giữ nguyên các phần khác)
 
 export const fetchUserProfile = async () => {
   try {
-    const res = await axios.get(`${API_BASE}/users/me`, {  // hoặc dùng endpoint /users/profile nếu bạn thích
+    const res = await axios.get(`${API_BASE}/users/me`, {  
       withCredentials: true,
     });
 
     const freshUser = res.data;
 
     setUser(freshUser);
-    localStorage.setItem('techcare_user', JSON.stringify(freshUser)); // vẫn lưu để nhanh hơn lần sau
+    localStorage.setItem('techcare_user', JSON.stringify(freshUser)); 
 
     console.log('[FETCH PROFILE] Avatar từ DB:', freshUser.avatar);
   } catch (err: any) {
@@ -162,6 +161,4 @@ export const fetchUserProfile = async () => {
     }
   }
 };
-
-// Trong login: gọi fetch sau khi login để lấy avatar mới nhất
 

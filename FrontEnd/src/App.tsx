@@ -57,15 +57,13 @@ const ProtectedRoute = ({
     return <Navigate to="/" replace />;
   }
 
-  // Nếu role không nằm trong allowedRoles → redirect về trang phù hợp
   if (!allowedRoles.includes(user.role)) {
     // Chỉ sửa phần manager trước
     if (user.role === "manager") {
       return <Navigate to="/admin" replace />;
     }
-    // Các role khác tạm giữ nguyên hoặc comment nếu chưa cần test
-    if (user.role === "receptionist")
-      return <Navigate to="/receptionist" replace />;
+    if (user.role === "frontdesk")
+      return <Navigate to="/frontdesk" replace />;
     if (user.role === "technician")
       return <Navigate to="/technician" replace />;
     if (user.role === "warehouse") return <Navigate to="/inventory" replace />;
@@ -80,7 +78,6 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Trang gốc: nếu chưa login → Login, đã login → redirect theo role */}
       <Route
         path="/"
         element={
@@ -91,8 +88,8 @@ const AppRoutes = () => {
               to={
                 user.role === "manager"
                   ? "/admin"
-                  : user.role === "receptionist"
-                    ? "/receptionist"
+                  : user.role === "frontdesk"
+                    ? "/frontdesk"
                     : user.role === "technician"
                       ? "/technician"
                       : user.role === "warehouse"
@@ -115,7 +112,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Route admin - chỉ cho phép manager */}
       <Route
         path="/admin"
         element={
@@ -127,9 +123,9 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/receptionist"
+        path="/frontdesk"
         element={
-          <ProtectedRoute allowedRoles={["manager", "receptionist"]}>
+          <ProtectedRoute allowedRoles={["manager", "frontdesk"]}>
             <Layout>
               <ReceptionistBoard />
             </Layout>
@@ -184,7 +180,7 @@ const AppRoutes = () => {
               "manager",
               "technician",
               "warehouse",
-              "receptionist",
+              "frontdesk",
             ]}
           >
             <Layout>
@@ -202,7 +198,7 @@ const AppRoutes = () => {
               "technician",
               "warehouse",
               "customer",
-              "receptionist",
+              "frontdesk",
             ]}
           >
             <Layout>

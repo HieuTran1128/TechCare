@@ -154,7 +154,7 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Phần Thông báo (giữ nguyên như cũ, bạn có thể mở rộng sau) */}
+      {/* Phần Thông báo */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -176,7 +176,6 @@ const Settings: React.FC = () => {
               className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
             />
           </div>
-          {/* Thêm các tùy chọn khác nếu cần */}
         </div>
       </div>
 
@@ -185,7 +184,7 @@ const Settings: React.FC = () => {
         <button
           type="button"
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50"
-          // onClick={handleSave} // bạn có thể thêm hàm lưu sau
+          // onClick={handleSave} 
         >
           <Save size={18} />
           Lưu thay đổi
