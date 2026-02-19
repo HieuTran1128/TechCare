@@ -1,4 +1,5 @@
 const userService = require('../services/user.service');
+const User = require('../models/user.model');
 
 exports.createUser = async (req, res, next) => {
   try {
@@ -22,12 +23,47 @@ exports.updateAvatar = async (req, res) => {
 };
 
 exports.getAllUsers = async (req, res) => {
-  const users = await userService.getAllUsers();
+  console.log('\n========== getAllUsers CONTROLLER ==========');
+  console.log('Timestamp:', new Date().toISOString());
+  try {
+    console.log('[getAllUsers] Query params:', req.query);
+    console.log('[getAllUsers] User from auth middleware:', JSON.stringify(req.user));
+    
+    let roleFilter = req.query.role;
+    console.log('[getAllUsers] roleFilter from query:', roleFilter, 'type:', typeof roleFilter);
+    
+    if (typeof roleFilter === 'string') {
+      roleFilter = roleFilter.toLowerCase();
+    }
+    console.log('[getAllUsers] roleFilter after lowercase:', roleFilter);
+    
+    const users = await userService.getAllUsers(roleFilter);
+    console.log('[getAllUsers] Query returned count:', users.length);
+    
+    if (users.length === 0) {
+      console.log('[getAllUsers] WARNING: No users found! Checking all users in DB...');
+      const allUsers = await userService.getAllUsers(null);
+      console.log('[getAllUsers] Total users in DB:', allUsers.length);
+      if (allUsers.length > 0) {
+        console.log('[getAllUsers] Sample roles in DB:', allUsers.slice(0, 5).map(u => ({ name: u.fullName, role: u.role, roleType: typeof u.role })));
+      }
+    } else {
+      console.log('[getAllUsers] Sample users:', JSON.stringify(users.slice(0, 3).map(u => ({_id: u._id, fullName: u.fullName, role: u.role})), null, 2));
+    }
 
-  res.json({
-    total: users.length,
-    data: users
-  });
+    const responseBody = {
+      total: users.length,
+      data: users
+    };
+    console.log('[getAllUsers] Sending response:', JSON.stringify({...responseBody, data: `[${users.length} items]`}));
+    
+    res.json(responseBody);
+    console.log('[getAllUsers] Response sent successfully');
+  } catch (err) {
+    console.error('[getAllUsers] Error caught:', err.message, err.stack);
+    res.status(500).json({ message: err.message });
+  }
+  console.log('========== END getAllUsers ==========\n');
 };
 
 exports.updateProfile = async (req, res, next) => {

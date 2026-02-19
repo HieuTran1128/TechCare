@@ -1,9 +1,8 @@
 
 import {  LayoutDashboard, Wrench, Package, Search, Settings, HelpCircle, Users, UserPlus, ClipboardList } from 'lucide-react';
 
-// --- Types ---
 
-export type Role = 'manager' | 'technician' | 'warehouse' | 'receptionist' | 'customer';
+export type Role = 'manager' | 'technician' | 'warehouse' | 'frontdesk' | 'customer';
 export type UserStatus = 'active' | 'pending';
 
 export interface User {
@@ -53,7 +52,6 @@ export interface TrackingInfo {
   steps: TrackingStep[];
 }
 
-// --- Mock Data ---
 
 export const MOCK_USERS: User[] = [
   {
@@ -84,8 +82,8 @@ export const MOCK_USERS: User[] = [
     id: 'u4',
     name: 'Phạm Lễ Tân',
     email: 'letan@techcare.vn',
-    role: 'receptionist',
-    avatar: 'https://i.pravatar.cc/150?u=receptionist',
+    role: 'frontdesk',
+    avatar: 'https://i.pravatar.cc/150?u=frontdesk',
     status: 'active',
   },
 ];
@@ -104,7 +102,6 @@ export const MOCK_INVENTORY: InventoryItem[] = [
   { id: '3', name: 'Chip Apple M1 Silicon', sku: 'CPU-AP-M1', quantity: 45, price: 2200000, category: 'Chip', image: 'https://picsum.photos/200/200?random=3' },
 ];
 
-// Added MOCK_TRACKING to resolve the error in pages/CustomerTracking.tsx
 export const MOCK_TRACKING: TrackingInfo = {
   id: 'TC-83921',
   customerName: 'Nguyễn Văn A',
@@ -131,12 +128,12 @@ export interface MenuItem {
 
 export const MENU_ITEMS: MenuItem[] = [
   { label: 'Tổng quan', path: '/admin', icon: LayoutDashboard, roles: ['manager'] },
-  { label: 'Tiếp nhận máy', path: '/receptionist', icon: ClipboardList, roles: ['manager', 'receptionist'] },
+  { label: 'Tiếp nhận máy', path: '/frontdesk', icon: ClipboardList, roles: ['manager', 'frontdesk'] },
   { label: 'Nhân viên', path: '/employees', icon: UserPlus, roles: ['manager'] },
   { label: 'Kỹ thuật viên', path: '/technician', icon: Wrench, roles: ['manager', 'technician'] },
   { label: 'Kho linh kiện', path: '/inventory', icon: Package, roles: ['manager', 'warehouse', 'technician'] },
   { label: 'Khách hàng', path: '/customer-lookup', icon: Users, roles: ['manager'] },
   { label: 'Tra cứu', path: '/customer-lookup', icon: Search, roles: ['customer'] },
-  { label: 'Cài đặt', path: '/settings', icon: Settings, roles: ['manager', 'technician', 'warehouse', 'receptionist'] },
-  { label: 'Trợ giúp', path: '/help', icon: HelpCircle, roles: ['manager', 'technician', 'warehouse', 'customer', 'receptionist'] },
+  { label: 'Cài đặt', path: '/settings', icon: Settings, roles: ['manager', 'technician', 'warehouse', 'frontdesk'] },
+  { label: 'Trợ giúp', path: '/help', icon: HelpCircle, roles: ['manager', 'technician', 'warehouse', 'customer', 'frontdesk'] },
 ];

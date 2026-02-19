@@ -50,7 +50,7 @@ const DEMO_ACCOUNTS = [
 ];
 
 export const Login: React.FC = () => {
-  const { login } = useAuth(); // giả sử context có hàm login để cập nhật state global
+  const { login } = useAuth(); // Context có hàm login để cập nhật state global
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -70,13 +70,8 @@ export const Login: React.FC = () => {
     try {
       const response = await axios.post(
         `${API_BASE_URL}/auth/login`,
-        {
-          email,
-          password,
-        },
-        {
-          withCredentials: true, // rất quan trọng để gửi và nhận cookie httpOnly
-        },
+        { email, password },
+        { withCredentials: true },
       );
 
       const { success, token, user } = response.data;
@@ -84,41 +79,37 @@ export const Login: React.FC = () => {
       console.log("Role thực tế:", user?.role);
 
       if (success) {
-        // Lưu thông tin user vào context (để dùng ở các trang sau)
+        localStorage.setItem("token", token); // Lưu token để interceptor axios dùng
+        localStorage.setItem("user", JSON.stringify(user)); // Lưu user info
+
+        // Gọi hàm login từ context để cập nhật state toàn cục
         login({
           id: user.id,
           email: user.email,
           fullName: user.fullName,
           role: user.role,
-          token, // nếu context cần token
+          token, // truyền token vào context nếu context cần
         });
 
-        // Debug để chắc chắn
         console.log("Role nhận được:", user.role);
 
-        // Điều hướng theo role thực tế
-        const role = user.role?.toLowerCase(); // đảm bảo không phân biệt hoa/thường
-
+        // Điều hướng theo role
+        const role = user.role?.toLowerCase();
         switch (role) {
           case "manager":
-            navigate("/admin"); // hoặc '/manager/dashboard' nếu bạn có route này
+            navigate("/admin");
             break;
-
           case "frontdesk":
-            navigate("/receptionist");
+            navigate("/frontdesk");
             break;
-
           case "technician":
             navigate("/technician");
             break;
-
           case "storekeeper":
             navigate("/inventory");
             break;
-
           default:
-            console.warn("Role không xác định:", role);
-            navigate("/dashboard"); // trang mặc định nếu role lạ
+            navigate("/dashboard");
             break;
         }
       }

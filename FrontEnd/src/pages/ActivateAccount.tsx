@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:3000/api'; // điều chỉnh nếu cần
+const API_BASE = 'http://localhost:3000/api'; 
 console.log('[Activate.tsx] File này ĐÃ được import và chạy');
 export default function Activate() {
   const [searchParams] = useSearchParams();
@@ -21,7 +21,6 @@ export default function Activate() {
     console.log('[Activate] All search params:', Object.fromEntries(searchParams));
   }, [searchParams, token]);
 
-  // ─── LOGGING ────────────────────────────────
   useEffect(() => {
     console.log('[Activate] Component mounted');
     console.log('[Activate] Current URL:', window.location.href);
@@ -91,11 +90,11 @@ export default function Activate() {
         console.error('[Activate] Status:', err.response.status);
         errMsg = err.response.data?.message || errMsg;
       } else if (err.request) {
-        // Không nhận được response (mạng, CORS, server chết...)
+        // Không nhận được response 
         console.error('[Activate] No response received. Request:', err.request);
         errMsg = 'Không kết nối được đến server. Kiểm tra mạng hoặc server backend.';
       } else {
-        // Lỗi khác (ví dụ setup axios sai)
+        // Lỗi khác 
         console.error('[Activate] Error message:', err.message);
         errMsg = err.message || errMsg;
       }

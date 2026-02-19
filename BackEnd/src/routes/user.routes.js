@@ -7,7 +7,7 @@ const upload = require("../middlewares/upload.middleware");
 
 router.post("/invite", auth, role(ROLES.MANAGER), controller.createUser);
 router.post("/avatar", auth, upload.single("avatar"), controller.updateAvatar);
-router.get("/users", auth, role(ROLES.MANAGER), controller.getAllUsers);
+router.get("/", auth, role(ROLES.MANAGER), controller.getAllUsers);
 router.patch("/profile", auth, controller.updateProfile);
 router.get('/me', auth, controller.getCurrentUser);
 

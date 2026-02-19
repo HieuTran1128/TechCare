@@ -8,7 +8,7 @@ interface Employee {
   _id: string;
   fullName: string;
   email: string;
-  role: 'manager' | 'technician' | 'warehouse' | 'receptionist';
+  role: 'manager' | 'technician' | 'warehouse' | 'frontdesk';
   status: 'INVITED' | 'ACTIVE' | 'REJECTED';
   avatar?: string;
   phone?: string;
@@ -42,7 +42,7 @@ export const EmployeeManagement: React.FC = () => {
       const res = await axios.get(`${API_BASE}/users`, {
         withCredentials: true, // gửi cookie JWT
       });
-      setEmployees(res.data.data || res.data); // tùy response của bạn
+      setEmployees(res.data.data || res.data); 
     } catch (err) {
       console.error(err);
       setError('Không thể tải danh sách nhân viên');
@@ -80,7 +80,7 @@ export const EmployeeManagement: React.FC = () => {
     }
   };
 
-  // Xóa nhân viên (nếu backend hỗ trợ)
+  // Xóa nhân viên 
   const deleteEmployee = async (id: string) => {
     if (!window.confirm('Xác nhận xóa nhân viên này?')) return;
 
@@ -107,7 +107,7 @@ export const EmployeeManagement: React.FC = () => {
         return <span className={`${base} bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400`}>Kỹ thuật</span>;
       case 'warehouse':
         return <span className={`${base} bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400`}>Kho hàng</span>;
-      case 'receptionist':
+      case 'frontdesk':
         return <span className={`${base} bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400`}>Lễ tân</span>;
       default:
         return <span className={`${base} bg-slate-100 text-slate-700 border-slate-200`}>{role}</span>;
@@ -292,7 +292,7 @@ export const EmployeeManagement: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Chức vụ</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['receptionist', 'technician', 'warehouse', 'manager'] as const).map((r) => (
+                    {(['frontdesk', 'technician', 'warehouse', 'manager'] as const).map((r) => (
                       <button
                         key={r}
                         type="button"
@@ -302,7 +302,7 @@ export const EmployeeManagement: React.FC = () => {
                             ? 'bg-blue-600 border-blue-600 text-white'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
                       >
-                        {r === 'receptionist' ? 'Lễ tân' : r === 'technician' ? 'Kỹ thuật' : r === 'warehouse' ? 'Kho' : 'Quản trị'}
+                        {r === 'frontdesk' ? 'Lễ tân' : r === 'technician' ? 'Kỹ thuật' : r === 'warehouse' ? 'Kho' : 'Quản trị'}
                       </button>
                     ))}
                   </div>
