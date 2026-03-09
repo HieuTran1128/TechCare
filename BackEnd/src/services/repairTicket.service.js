@@ -39,12 +39,27 @@ async function assignTechnician(ticketId, technicianId, userId) {
 }
 
 async function diagnose(ticketId, data, userId) {
+  console.log('Service diagnose - parameters:');
+  console.log('  ticketId:', ticketId);
+  console.log('  data:', JSON.stringify(data));
+  console.log('  userId:', userId);
+
   const ticket = await RepairTicket.findById(ticketId).populate({
     path: "device",
     populate: { path: "customer" },
   });
 
   if (!ticket) throw new Error("NOT_FOUND");
+
+  console.log('Diagnose check - ticket.technician:', ticket.technician);
+  console.log('Diagnose check - userId:', userId);
+  console.log('Diagnose check - ticket.technician.toString():', ticket.technician?.toString());
+  console.log('Diagnose check - comparison:', ticket.technician?.toString() !== userId);
+
+  // Kiểm tra xem user có phải là technician được assign không
+  if (!ticket.technician || ticket.technician.toString() !== userId) {
+    throw new Error("UNAUTHORIZED: Chỉ kỹ thuật viên được phân công mới có thể chẩn đoán");
+  }
 
   ticket.diagnosisResult = data.diagnosisResult;
   ticket.estimatedCost = data.estimatedCost;
