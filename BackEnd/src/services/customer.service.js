@@ -1,13 +1,11 @@
 const Customer = require('../models/customer.model');
 
 async function createCustomer(data) {
-  // createCustomer is used by receptionist and elsewhere - email should now always be provided
-  const existedPhone = await Customer.findOne({ phone: data.phone });
-  if (existedPhone) throw new Error('CUSTOMER_ALREADY_EXISTS');
-
+  // Nếu trùng email thì trả về customer cũ
   const existedEmail = await Customer.findOne({ email: data.email });
-  if (existedEmail) throw new Error('EMAIL_ALREADY_EXISTS');
+  if (existedEmail) return existedEmail;
 
+  // Nếu không trùng email, tạo mới
   return Customer.create(data);
 }
 
@@ -23,8 +21,18 @@ async function getAllCustomers() {
   return Customer.find().sort({ createdAt: -1 });
 }
 
+async function getCustomerByPhone(phone) {
+  return Customer.findOne({ phone: phone.trim() });
+}
+
+async function getCustomerByEmail(email) {
+  return Customer.findOne({ email: email.trim().toLowerCase() });
+}
+
 module.exports = {
   createCustomer,
   getAllCustomers,
-  updateCustomer
+  updateCustomer,
+  getCustomerByPhone,
+  getCustomerByEmail
 };

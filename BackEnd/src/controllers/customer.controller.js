@@ -10,6 +10,15 @@ exports.create = async (req, res) => {
 };
 
 exports.getAll = async (req, res) => {
+  const { phone, email } = req.query;
+  if (phone) {
+    const customer = await service.getCustomerByPhone(phone);
+    return res.json(customer ? [customer] : []);
+  }
+  if (email) {
+    const customer = await service.getCustomerByEmail(email);
+    return res.json(customer ? [customer] : []);
+  }
   const customers = await service.getAllCustomers();
   res.json(customers);
 };

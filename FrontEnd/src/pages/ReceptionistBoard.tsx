@@ -81,17 +81,11 @@ export const ReceptionistBoard: React.FC = () => {
       let customerId: string;
 
       try {
-        const checkRes = await axios.get(`${API_BASE}/customers?phone=${encodeURIComponent(formData.customerPhone.trim())}`);
+        const checkRes = await axios.get(`${API_BASE}/customers?email=${encodeURIComponent(formData.customerEmail.trim())}`);
         if (checkRes.data.length > 0) {
           const existing = checkRes.data[0];
           customerId = existing._id;
-          console.log('Tái sử dụng khách hàng cũ:', customerId);
-
-          if (!existing.email && formData.customerEmail.trim()) {
-            await axios.patch(`${API_BASE}/customers/${customerId}`, {
-              email: formData.customerEmail.trim(),
-            });
-          }
+          console.log('Tái sử dụng khách hàng cũ theo email:', customerId);
         } else {
           // Tạo mới 
           const customerRes = await axios.post(`${API_BASE}/customers`, {
@@ -102,7 +96,7 @@ export const ReceptionistBoard: React.FC = () => {
           customerId = customerRes.data._id;
         }
       } catch (checkErr: any) {
-        console.warn('Không tìm thấy API check phone, tạo mới customer:', checkErr.message);
+        console.warn('Không tìm thấy API check email, tạo mới customer:', checkErr.message);
         const customerRes = await axios.post(`${API_BASE}/customers`, {
           fullName: formData.customerName.trim(),
           phone: formData.customerPhone.trim(),
