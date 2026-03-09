@@ -7,7 +7,7 @@ const sendError = (res, status, message, code = 'error') => {
 
 exports.create = async (req, res) => {
   try {
-    const ticket = await service.createTicket(req.body, req.user.id);
+    const ticket = await service.createTicket(req.body, req.user.userId);
     res.status(201).json(ticket);
   } catch (err) {
     sendError(res, 400, err.message || 'Không thể tạo phiếu sửa chữa');
@@ -19,7 +19,7 @@ exports.assign = async (req, res) => {
     const ticket = await service.assignTechnician(
       req.params.id,
       req.body.technicianId,
-      req.user
+      req.user.userId
     );
     res.json(ticket);
   } catch (err) {
@@ -28,8 +28,9 @@ exports.assign = async (req, res) => {
 };
 
 exports.diagnose = async (req, res) => {
-  try {
-    const ticket = await service.diagnose(req.params.id, req.body, req.user.id);
+  try {    console.log('Controller diagnose - req.user:', JSON.stringify(req.user));
+    console.log('Controller diagnose - req.user.userId:', req.user.userId);
+    console.log('Controller diagnose - req.user.id:', req.user.id);    const ticket = await service.diagnose(req.params.id, req.body, req.user.userId);
     res.json(ticket);
   } catch (err) {
     sendError(res, 400, err.message || 'Không thể chẩn đoán và báo giá');
@@ -38,7 +39,7 @@ exports.diagnose = async (req, res) => {
 
 exports.approveAtDesk = async (req, res) => {
   try {
-    const ticket = await service.approveAtDesk(req.params.id, req.user.id);
+    const ticket = await service.approveAtDesk(req.params.id, req.user.userId);
     res.json(ticket);
   } catch (err) {
     sendError(res, 400, err.message || 'Không thể phê duyệt tại quầy');
