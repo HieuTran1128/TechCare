@@ -11,7 +11,16 @@ function inviteTemplate(fullName, link) {
   `;
 }
 
-const approvalTemplate = (customerName, ticketCode, diagnosisResult, estimatedCost, approveUrl, rejectUrl) => {
+const approvalTemplate = ({
+  customerName,
+  ticketCode,
+  diagnosisResult,
+  estimatedCost,
+  workDescription,
+  estimatedCompletionDate,
+  approveUrl,
+  rejectUrl,
+}) => {
   return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -19,59 +28,69 @@ const approvalTemplate = (customerName, ticketCode, diagnosisResult, estimatedCo
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Báo giá sửa chữa - TechCare</title>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f7fa; color: #333; }
-    .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; padding: 30px 20px; text-align: center; }
-    .header h1 { margin: 0; font-size: 28px; }
-    .content { padding: 30px 25px; line-height: 1.6; }
-    .info-box { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 6px; }
-    .buttons { text-align: center; margin: 30px 0; }
-    .btn { display: inline-block; padding: 14px 32px; margin: 10px; font-size: 16px; font-weight: bold; text-decoration: none; border-radius: 50px; transition: all 0.3s; }
-    .btn-approve { background: #10b981; color: white; }
-    .btn-reject { background: #ef4444; color: white; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
-    .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
-    .highlight { color: #3b82f6; font-weight: bold; }
-  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>TechCare - Báo giá sửa chữa</h1>
+<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
+  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#2563eb,#4f46e5);color:white;padding:20px;">
+      <h1 style="margin:0;font-size:22px;">TechCare - Báo giá sửa chữa</h1>
+      <p style="margin:8px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
     </div>
-    
-    <div class="content">
+
+    <div style="padding:20px;line-height:1.6;">
       <p>Xin chào <strong>${customerName}</strong>,</p>
-      
-      <p>Cảm ơn quý khách đã tin tưởng gửi thiết bị đến TechCare. Chúng tôi đã kiểm tra và chẩn đoán xong phiếu sửa chữa <strong>#${ticketCode}</strong>.</p>
-      
-      <div class="info-box">
-        <strong>Kết quả chẩn đoán:</strong><br>
-        ${diagnosisResult || 'Không có mô tả chi tiết'}
+      <p>Chúng tôi đã hoàn tất kiểm tra thiết bị và gửi báo giá sửa chữa cho phiếu <strong>${ticketCode}</strong>.</p>
+
+      <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Mô tả lỗi kỹ thuật:</strong><br/>
+        ${diagnosisResult || 'Chưa có mô tả'}
       </div>
-      
-      <div class="info-box">
-        <strong>Chi phí ước tính:</strong><br>
-        <span class="highlight">${estimatedCost.toLocaleString('vi-VN')} ₫</span>
+
+      <div style="background:#f8fafc;border-left:4px solid #10b981;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Hạng mục cần xử lý:</strong><br/>
+        ${workDescription || 'Sửa lỗi phần mềm / bảo trì tiêu chuẩn'}
       </div>
-      
-      <p>Vui lòng xác nhận bằng cách chọn một trong hai nút bên dưới. Link xác nhận có hiệu lực trong <strong>24 giờ</strong>.</p>
-      
-      <div class="buttons">
-        <a href="${approveUrl}" class="btn btn-approve">Đồng ý sửa chữa</a>
-        <a href="${rejectUrl}" class="btn btn-reject">Từ chối sửa chữa</a>
+
+      <div style="background:#f8fafc;border-left:4px solid #f59e0b;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Chi phí ước tính:</strong> ${Number(estimatedCost || 0).toLocaleString('vi-VN')} ₫<br/>
+        <strong>Dự kiến hoàn thành:</strong> ${estimatedCompletionDate ? new Date(estimatedCompletionDate).toLocaleDateString('vi-VN') : 'Sẽ cập nhật sau'}
       </div>
-      
-      <p>Nếu quý khách có bất kỳ thắc mắc nào, hãy liên hệ hotline <strong>1900-xxxx</strong> hoặc reply email này.</p>
-      
-      <p>Trân trọng,<br>
-      <strong>Đội ngũ TechCare</strong></p>
+
+      <p>Vui lòng xác nhận để chúng tôi tiếp tục xử lý thiết bị:</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${approveUrl}" style="display:inline-block;background:#10b981;color:white;text-decoration:none;padding:10px 18px;border-radius:999px;margin:0 6px;">Đồng ý sửa chữa</a>
+        <a href="${rejectUrl}" style="display:inline-block;background:#ef4444;color:white;text-decoration:none;padding:10px 18px;border-radius:999px;margin:0 6px;">Từ chối</a>
+      </div>
+
+      <p style="font-size:13px;color:#6b7280;">Liên kết có hiệu lực trong 24 giờ.</p>
     </div>
-    
-    <div class="footer">
-      <p>TechCare - Dịch vụ sửa chữa thiết bị chuyên nghiệp</p>
-      <p>Email: support@techcare.vn | Hotline: 1900-xxxx</p>
+  </div>
+</body>
+</html>
+  `;
+};
+
+const completionTemplate = ({ customerName, ticketCode, pickupNote }) => {
+  return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thiết bị đã sửa xong - TechCare</title>
+</head>
+<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
+  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#059669,#0ea5e9);color:white;padding:20px;">
+      <h1 style="margin:0;font-size:22px;">TechCare - Thiết bị đã hoàn thành</h1>
+      <p style="margin:8px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
+    </div>
+    <div style="padding:20px;line-height:1.6;">
+      <p>Xin chào <strong>${customerName}</strong>,</p>
+      <p>Thiết bị của quý khách đã được sửa xong. Quý khách vui lòng đến cửa hàng để nhận máy.</p>
+      <div style="background:#f8fafc;border-left:4px solid #0ea5e9;padding:12px;border-radius:8px;margin:12px 0;">
+        ${pickupNote || 'Vui lòng mang theo biên nhận khi nhận máy.'}
+      </div>
+      <p>Xin cảm ơn quý khách đã sử dụng dịch vụ TechCare.</p>
     </div>
   </div>
 </body>
@@ -81,5 +100,6 @@ const approvalTemplate = (customerName, ticketCode, diagnosisResult, estimatedCo
 
 module.exports = {
   inviteTemplate,
-  approvalTemplate
+  approvalTemplate,
+  completionTemplate,
 };

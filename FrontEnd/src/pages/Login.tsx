@@ -21,28 +21,32 @@ const API_BASE_URL =
 const DEMO_ACCOUNTS = [
   {
     role: "Quản lý",
-    email: "admin@techcare.vn",
+    email: "hieutltde180438@fpt.edu.vn",
+    password: "trunghieu",
     icon: Shield,
     color: "text-blue-600",
     bg: "bg-blue-100 dark:bg-blue-900/30",
   },
   {
     role: "Lễ tân",
-    email: "letan@techcare.vn",
+    email: "khongten1212004@gmail.com",
+    password: "hoangvu",
     icon: ClipboardList,
     color: "text-purple-600",
     bg: "bg-purple-100 dark:bg-purple-900/30",
   },
   {
     role: "Kỹ thuật",
-    email: "tech@techcare.vn",
+    email: "vuker1212004@gmail.com",
+    password: "hoangvu",
     icon: Wrench,
     color: "text-orange-600",
     bg: "bg-orange-100 dark:bg-orange-900/30",
   },
   {
     role: "Kho",
-    email: "kho@techcare.vn",
+    email: "haitmde180679@fpt.edu.vn",
+    password: "hoangvu",
     icon: Package,
     color: "text-emerald-600",
     bg: "bg-emerald-100 dark:bg-emerald-900/30",
@@ -133,9 +137,9 @@ export const Login: React.FC = () => {
     }
   };
 
-  const fillCredential = (demoEmail: string) => {
+  const fillCredential = (demoEmail: string, demoPassword: string) => {
     setEmail(demoEmail);
-    setPassword("demo123");
+    setPassword(demoPassword);
     setError("");
   };
 
@@ -253,7 +257,7 @@ export const Login: React.FC = () => {
             {DEMO_ACCOUNTS.map((acc) => (
               <button
                 key={acc.email}
-                onClick={() => fillCredential(acc.email)}
+                onClick={() => fillCredential(acc.email, acc.password)}
                 className="flex items-center gap-3 p-3 rounded-2xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all text-left group"
               >
                 <div

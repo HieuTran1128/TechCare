@@ -6,6 +6,9 @@ exports.createUser = async (req, res, next) => {
     await userService.createStaff(req.body);
     res.status(201).json({ message: 'Invitation sent' });
   } catch (err) {
+    if (err.message === 'INVALID_STAFF_ROLE') {
+      return res.status(400).json({ message: 'Manager chỉ được tạo tài khoản technician/frontdesk/storekeeper' });
+    }
     next(err);
   }
 };
@@ -84,6 +87,31 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
+exports.deleteUser = async (req, res) => {
+  try {
+    await userService.removeUser(req.user.userId, req.params.id);
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.toggleBlockUser = async (req, res) => {
+  try {
+    const { blocked } = req.body;
+    const updated = await userService.setUserBlocked(req.params.id, Boolean(blocked));
+    res.json({
+      message: blocked ? 'User blocked' : 'User unblocked',
+      user: {
+        _id: updated._id,
+        status: updated.status,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-passwordHash -invitationToken -forgotPasswordOTP');
@@ -92,6 +120,7 @@ exports.getCurrentUser = async (req, res) => {
       id: user._id.toString(),
       email: user.email,
       fullName: user.fullName,
+      phone: user.phone,
       role: user.role,
       avatar: user.avatar,
     });
