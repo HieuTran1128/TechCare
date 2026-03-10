@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Search, Trash2, Clock, CheckCircle, X } from 'lucide-react';
+import { UserPlus, Search, Trash2, Clock, X, Ban, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
@@ -8,8 +8,8 @@ interface Employee {
   _id: string;
   fullName: string;
   email: string;
-  role: 'manager' | 'technician' | 'warehouse' | 'frontdesk';
-  status: 'INVITED' | 'ACTIVE' | 'REJECTED';
+  role: 'manager' | 'technician' | 'storekeeper' | 'frontdesk';
+  status: 'INVITED' | 'ACTIVE' | 'BLOCKED' | 'REJECTED';
   avatar?: string;
   phone?: string;
   createdAt?: string;
@@ -82,13 +82,36 @@ export const EmployeeManagement: React.FC = () => {
 
   // Xóa nhân viên 
   const deleteEmployee = async (id: string) => {
-    if (!window.confirm('Xác nhận xóa nhân viên này?')) return;
+    const target = employees.find((e) => e._id === id);
+
+    if (!window.confirm(`Bạn có chắc muốn xóa nhân viên ${target?.fullName || ''}? Hành động này không thể hoàn tác.`)) return;
 
     try {
       await axios.delete(`${API_BASE}/users/${id}`, { withCredentials: true });
       setEmployees(employees.filter((e) => e._id !== id));
-    } catch (err) {
-      alert('Không thể xóa nhân viên');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Không thể xóa nhân viên');
+    }
+  };
+
+  const toggleBlock = async (id: string, blocked: boolean) => {
+    const target = employees.find((e) => e._id === id);
+    const actionText = blocked ? 'chặn' : 'mở chặn';
+
+    if (!window.confirm(`Xác nhận ${actionText} nhân viên ${target?.fullName || ''}?`)) return;
+
+    try {
+      await axios.patch(
+        `${API_BASE}/users/${id}/block`,
+        { blocked },
+        { withCredentials: true },
+      );
+
+      setEmployees((prev) =>
+        prev.map((e) => (e._id === id ? { ...e, status: blocked ? 'BLOCKED' : 'ACTIVE' } : e)),
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Không thể cập nhật trạng thái');
     }
   };
 
@@ -105,7 +128,7 @@ export const EmployeeManagement: React.FC = () => {
         return <span className={`${base} bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400`}>Quản trị</span>;
       case 'technician':
         return <span className={`${base} bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400`}>Kỹ thuật</span>;
-      case 'warehouse':
+      case 'storekeeper':
         return <span className={`${base} bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400`}>Kho hàng</span>;
       case 'frontdesk':
         return <span className={`${base} bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400`}>Lễ tân</span>;
@@ -126,6 +149,12 @@ export const EmployeeManagement: React.FC = () => {
         return (
           <span className="text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1.5">
             <Clock size={12} /> Chờ kích hoạt
+          </span>
+        );
+      case 'BLOCKED':
+        return (
+          <span className="text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-1.5">
+            <Ban size={12} /> Đã chặn
           </span>
         );
       case 'REJECTED':
@@ -214,12 +243,29 @@ export const EmployeeManagement: React.FC = () => {
                       <td className="px-6 py-4">{getRoleBadge(emp.role)}</td>
                       <td className="px-6 py-4">{getStatusDisplay(emp.status)}</td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => deleteEmployee(emp._id)}
-                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {emp.role !== 'manager' && (
+                            <button
+                              onClick={() => toggleBlock(emp._id, emp.status !== 'BLOCKED')}
+                              className={`p-2 rounded-lg transition-all ${
+                                emp.status === 'BLOCKED'
+                                  ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                                  : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                              }`}
+                              title={emp.status === 'BLOCKED' ? 'Mở chặn' : 'Chặn'}
+                            >
+                              {emp.status === 'BLOCKED' ? <ShieldCheck size={18} /> : <Ban size={18} />}
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => deleteEmployee(emp._id)}
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                            title="Xóa nhân viên"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -292,7 +338,7 @@ export const EmployeeManagement: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Chức vụ</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['frontdesk', 'technician', 'warehouse', 'manager'] as const).map((r) => (
+                    {(['frontdesk', 'technician', 'storekeeper'] as const).map((r) => (
                       <button
                         key={r}
                         type="button"
@@ -302,7 +348,7 @@ export const EmployeeManagement: React.FC = () => {
                             ? 'bg-blue-600 border-blue-600 text-white'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
                       >
-                        {r === 'frontdesk' ? 'Lễ tân' : r === 'technician' ? 'Kỹ thuật' : r === 'warehouse' ? 'Kho' : 'Quản trị'}
+                        {r === 'frontdesk' ? 'Lễ tân' : r === 'technician' ? 'Kỹ thuật' : 'Kho'}
                       </button>
                     ))}
                   </div>

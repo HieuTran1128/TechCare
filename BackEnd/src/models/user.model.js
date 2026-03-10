@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["INVITED", "ACTIVE", "REJECTED"],
+      enum: ["INVITED", "ACTIVE", "BLOCKED", "REJECTED"],
       default: "INVITED",
     },
 

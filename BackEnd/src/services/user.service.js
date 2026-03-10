@@ -2,10 +2,16 @@ const User = require('../models/user.model');
 const crypto = require('crypto');
 const mailer = require('../config/mail');
 const cloudinary = require('../config/cloudinary');
+const ROLES = require('../constants/roles.constant');
 
 async function createStaff(data) {
   const existed = await User.findOne({ email: data.email });
   if (existed) throw new Error('EMAIL_EXISTS');
+
+  const allowedRoles = [ROLES.TECHNICIAN, ROLES.FRONTDESK, ROLES.STOREKEEPER];
+  if (!allowedRoles.includes(data.role)) {
+    throw new Error('INVALID_STAFF_ROLE');
+  }
 
   const token = crypto.randomUUID();
 
@@ -14,7 +20,7 @@ async function createStaff(data) {
     email: data.email,
     phone: data.phone,
     role: data.role,
-    passwordHash: null, 
+    passwordHash: null,
     status: 'INVITED',
     invitationToken: token,
     invitationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -99,7 +105,7 @@ async function getAllUsers(role) {
 }
 
 async function updateProfile(userId, data) {
-  const allowedFields = ['fullName']; 
+  const allowedFields = ['fullName', 'phone'];
 
   const updateData = {};
   allowedFields.forEach(field => {
@@ -123,4 +129,40 @@ async function updateProfile(userId, data) {
   return user;
 }
 
-module.exports = { createStaff, uploadAvatar, getAllUsers, updateProfile };
+async function removeUser(managerId, userId) {
+  const user = await User.findById(userId);
+  if (!user) throw new Error('USER_NOT_FOUND');
+
+  if (user.role === 'manager') {
+    throw new Error('CANNOT_DELETE_MANAGER');
+  }
+
+  if (user._id.toString() === managerId) {
+    throw new Error('CANNOT_DELETE_SELF');
+  }
+
+  await User.findByIdAndDelete(userId);
+}
+
+async function setUserBlocked(userId, blocked) {
+  const user = await User.findById(userId);
+  if (!user) throw new Error('USER_NOT_FOUND');
+
+  if (user.role === 'manager') {
+    throw new Error('CANNOT_BLOCK_MANAGER');
+  }
+
+  user.status = blocked ? 'BLOCKED' : 'ACTIVE';
+  await user.save();
+
+  return user;
+}
+
+module.exports = {
+  createStaff,
+  uploadAvatar,
+  getAllUsers,
+  updateProfile,
+  removeUser,
+  setUserBlocked,
+};

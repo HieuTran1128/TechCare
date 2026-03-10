@@ -44,6 +44,12 @@ async function login(email, password) {
       throw error;
     }
 
+    if (user.status === 'BLOCKED') {
+      const error = new Error('Account is blocked');
+      error.statusCode = 403;
+      throw error;
+    }
+
     if (user.status !== 'ACTIVE') {
       const error = new Error('Account is not active');
       error.statusCode = 403;
