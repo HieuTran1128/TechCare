@@ -1,0 +1,79 @@
+[{
+  "_id": {
+    "$oid": "697f6e963a397df5fb3e1986"
+  },
+  "fullName": "Hoàng Vũ (Quản Lý)",
+  "email": "hieutltde180438@fpt.edu.vn",
+  "passwordHash": "$2b$10$vGnyyHACT7vK/KPjO1GOOu/M8ZsnBcaxMuBva.cz.CbTvXe8an.j2",
+  "role": "manager",
+  "status": "ACTIVE",
+  "createdAt": {
+    "$date": "2026-02-01T15:17:42.772Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-09T16:08:53.914Z"
+  },
+  "__v": 0,
+  "avatar": "https://res.cloudinary.com/dupoo7ljr/image/upload/v1770006727/techcare/avatars/su348vdqfxkmu9z1lv8m.png",
+  "forgotPasswordExpiresAt": null,
+  "forgotPasswordOTP": null
+},
+{
+  "_id": {
+    "$oid": "69aee5413195a6fa5d1264fa"
+  },
+  "fullName": "Hoàng Vũ (Kỹ Thuật)",
+  "phone": "0914733450",
+  "email": "vuker1212004@gmail.com",
+  "passwordHash": "$2b$10$cSbyZGL2CqQ633xOvoew3eCjNBIR5alxjasELlethHrUDdDQP/GmC",
+  "role": "technician",
+  "status": "ACTIVE",
+  "invitationToken": null,
+  "invitationExpiresAt": null,
+  "createdAt": {
+    "$date": "2026-03-09T15:20:33.576Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-09T15:32:47.409Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69aee8a5fe31fa8ca68f00dc"
+  },
+  "fullName": "Hoàng Vũ (Lễ Tân)",
+  "phone": "0914733450",
+  "email": "khongten1212004@gmail.com",
+  "passwordHash": "$2b$10$J64Bu39n8t0U76.9XPhtj.x5RzGn4iBXeRhkBuMqjjunJxp/QZC2G",
+  "role": "frontdesk",
+  "status": "ACTIVE",
+  "invitationToken": null,
+  "invitationExpiresAt": null,
+  "createdAt": {
+    "$date": "2026-03-09T15:35:01.339Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-09T15:36:50.800Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69aefa99fe31fa8ca68f0c04"
+  },
+  "fullName": "Hoàng Vũ (Kho)",
+  "email": "haitmde180679@fpt.edu.vn",
+  "passwordHash": "$2b$10$VNHQ8rcdMPdP.xTGmonEvu8p5Q0LUUIgRc327cqtHqXjyLwd/MjWe",
+  "role": "storekeeper",
+  "status": "ACTIVE",
+  "invitationToken": null,
+  "invitationExpiresAt": null,
+  "createdAt": {
+    "$date": "2026-03-09T16:51:37.884Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-09T16:51:57.606Z"
+  },
+  "__v": 0
+}]
