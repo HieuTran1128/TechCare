@@ -28,13 +28,13 @@ export const CustomerTracking: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Load toàn bộ ticket 
+  // Load toàn bộ ticket (endpoint công khai, không cần đăng nhập)
   useEffect(() => {
     const fetchTickets = async () => {
       try {
         setIsLoading(true);
-        const res = await axios.get(`${API_BASE}/ticket`, {
-          params: { limit: 50, sort: '-createdAt' } 
+        const res = await axios.get(`${API_BASE}/ticket/public`, {
+          params: { limit: 50, sort: '-createdAt' },
         });
         const data = res.data.data || res.data || [];
         setTickets(data);

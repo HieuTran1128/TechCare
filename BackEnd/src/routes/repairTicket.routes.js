@@ -4,6 +4,8 @@ const role = require('../middlewares/role.middleware');
 const ROLES = require('../constants/roles.constant');
 const controller = require('../controllers/repairTicket.controller');
 
+router.get('/public', controller.getPublic);
+
 router.post('/', auth, role(ROLES.FRONTDESK, ROLES.MANAGER), controller.create);
 router.get('/', auth, controller.getAll);
 

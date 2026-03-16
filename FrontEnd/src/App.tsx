@@ -18,7 +18,6 @@ import { Help } from "./pages/Help";
 import { EmployeeManagement } from "./pages/EmployeeManagement";
 import { ReceptionistBoard } from "./pages/ReceptionistBoard";
 import Activate from "./pages/ActivateAccount";
-import { fetchUserProfile } from "./context/AuthContext";
 
 const AuthInitializer = () => {
   const { fetchUserProfile } = useAuth();

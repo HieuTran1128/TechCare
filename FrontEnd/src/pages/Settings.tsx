@@ -1,11 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Bell, Save, Upload, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast'; 
-import { fetchUserProfile } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
-  const { user, updateAvatar } = useAuth();
+  const { user, updateAvatar, fetchUserProfile } = useAuth();
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);

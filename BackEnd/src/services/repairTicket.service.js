@@ -170,9 +170,27 @@ async function customerReject(token) {
   return ticket;
 }
 
-async function getAllTickets({ limit = 6, sort = "-createdAt" } = {}) {
+function normalizeTicket(ticket) {
+  const customer = ticket.device?.customer;
+
+  return {
+    ...ticket,
+    customerName: customer?.fullName || '',
+    issue: ticket.initialIssue || '',
+    customerPhone: customer?.phone || '',
+    customerEmail: customer?.email || '',
+  };
+}
+
+async function getAllTickets({ limit = 6, sort = "-createdAt" } = {}, currentUser) {
   try {
-    const tickets = await RepairTicket.find()
+    // Nếu có kỹ thuật viên được truyền vào (phân quyền), chỉ lấy ticket gán cho thằng đó
+    const query = {};
+    if (currentUser?.role === 'technician') {
+      query.technician = currentUser.userId || currentUser.id;
+    }
+
+    const tickets = await RepairTicket.find(query)
       .sort(sort)
       .limit(limit)
       .populate({
@@ -185,16 +203,71 @@ async function getAllTickets({ limit = 6, sort = "-createdAt" } = {}) {
       })
       .lean(); // trả plain object để nhanh hơn
 
-    const total = await RepairTicket.countDocuments();
+    const total = await RepairTicket.countDocuments(query);
 
     return {
       success: true,
-      data: tickets,
+      data: tickets.map(normalizeTicket),
       total,
       limit,
     };
   } catch (err) {
     console.error("Lỗi get all tickets in service:", err);
+    throw new Error("Không thể lấy danh sách phiếu sửa chữa");
+  }
+}
+
+async function getPublicTickets({ limit = 100, sort = "-createdAt", q = "" } = {}) {
+  try {
+    const tickets = await RepairTicket.find()
+      .sort(sort)
+      .limit(limit)
+      .populate({
+        path: "device",
+        select: "brand model deviceType",
+        populate: {
+          path: "customer",
+          select: "fullName phone email",
+        },
+      })
+      .lean(); // trả plain object để nhanh hơn
+
+    const normalized = tickets.map(normalizeTicket);
+
+    if (!q) {
+      return {
+        success: true,
+        data: normalized,
+        total: normalized.length,
+        limit,
+      };
+    }
+
+    const filtered = normalized.filter((ticket) => {
+      const search = q.toLowerCase();
+      const ticketCode = String(ticket.ticketCode || "").toLowerCase();
+      const fullName = String(ticket.customerName || "").toLowerCase();
+      const phone = String(ticket.customerPhone || "").toLowerCase();
+      const email = String(ticket.customerEmail || "").toLowerCase();
+      const deviceInfo = `${ticket.device?.brand || ""} ${ticket.device?.model || ""} ${ticket.device?.deviceType || ""}`.toLowerCase();
+
+      return (
+        ticketCode.includes(search) ||
+        fullName.includes(search) ||
+        phone.includes(search) ||
+        email.includes(search) ||
+        deviceInfo.includes(search)
+      );
+    });
+
+    return {
+      success: true,
+      data: filtered,
+      total: filtered.length,
+      limit,
+    };
+  } catch (err) {
+    console.error("Lỗi get public tickets in service:", err);
     throw new Error("Không thể lấy danh sách phiếu sửa chữa");
   }
 }
@@ -207,4 +280,5 @@ module.exports = {
   customerApprove,
   customerReject,
   getAllTickets,
+  getPublicTickets,
 };

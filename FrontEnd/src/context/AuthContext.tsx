@@ -28,6 +28,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const setAuthHeader = (token?: string) => {
+    if (token) {
+      axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common.Authorization;
+    }
+  };
+
   useEffect(() => {
     const loadUser = () => {
       try {
@@ -35,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (stored) {
           const parsed = JSON.parse(stored) as User;
           setUser(parsed);
+          setAuthHeader(parsed.token);
         }
       } catch (err) {
         console.error('Failed to parse stored user:', err);
@@ -47,7 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadUser();
   }, []);
 
-  const fetchCurrentUser = async () => {
+  const fetchUserProfile = async () => {
     try {
       setIsLoading(true);
       const res = await axios.get(`${API_BASE}/users/me`, {
@@ -55,9 +64,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       const freshUser = res.data as User;
-      setUser(freshUser);
+      const existingToken =
+        user?.token ||
+        (JSON.parse(localStorage.getItem('techcare_user') || '{}') as User)?.token;
+      const mergedUser = { ...freshUser, token: existingToken };
 
-      localStorage.setItem('techcare_user', JSON.stringify(freshUser));
+      setUser(mergedUser);
+      setAuthHeader(existingToken);
+
+      localStorage.setItem('techcare_user', JSON.stringify(mergedUser));
 
       console.log('[FETCH USER] Đã cập nhật user từ server:', freshUser.fullName);
     } catch (err: any) {
@@ -81,6 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    setAuthHeader();
     localStorage.removeItem('techcare_user');
     // Nếu backend có endpoint logout để clear cookie thì gọi thêm
     axios.post(`${API_BASE}/auth/logout`, {}, { withCredentials: true });
@@ -121,6 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 const login = (userData: User) => {
   setUser(userData);
+  setAuthHeader(userData.token);
   localStorage.setItem('techcare_user', JSON.stringify(userData));
   fetchUserProfile(); // ← gọi thêm để lấy avatar từ DB (nếu login chỉ trả user cơ bản)
 };
@@ -139,26 +156,5 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-
-export const fetchUserProfile = async () => {
-  try {
-    const res = await axios.get(`${API_BASE}/users/me`, {  
-      withCredentials: true,
-    });
-
-    const freshUser = res.data;
-
-    setUser(freshUser);
-    localStorage.setItem('techcare_user', JSON.stringify(freshUser)); 
-
-    console.log('[FETCH PROFILE] Avatar từ DB:', freshUser.avatar);
-  } catch (err: any) {
-    console.error('Lấy profile thất bại:', err);
-    if (err.response?.status === 401) {
-      logout();
-    }
-  }
 };
 

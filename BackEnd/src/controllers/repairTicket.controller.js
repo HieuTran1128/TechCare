@@ -87,3 +87,21 @@ exports.getAll = async (req, res) => {
     });
   }
 };
+
+exports.getPublic = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const sort = req.query.sort || '-createdAt';
+    const q = (req.query.q || '').toString().trim().toLowerCase();
+
+    const result = await service.getPublicTickets({ limit, sort, q });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Public ticket fetch error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể lấy danh sách phiếu sửa chữa'
+    });
+  }
+};
