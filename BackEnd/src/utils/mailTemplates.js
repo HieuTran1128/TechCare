@@ -20,6 +20,9 @@ const approvalTemplate = ({
   estimatedCompletionDate,
   approveUrl,
   rejectUrl,
+  partsCost,
+  partsCount,
+  laborCost,
 }) => {
   return `
 <!DOCTYPE html>
@@ -48,6 +51,14 @@ const approvalTemplate = ({
       <div style="background:#f8fafc;border-left:4px solid #10b981;padding:12px;border-radius:8px;margin:12px 0;">
         <strong>Hạng mục cần xử lý:</strong><br/>
         ${workDescription || 'Sửa lỗi phần mềm / bảo trì tiêu chuẩn'}
+      </div>
+
+      <div style="background:#f8fafc;border-left:4px solid #0ea5e9;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Giá linh kiện cần thay:</strong> ${partsCount ? Number(partsCost || 0).toLocaleString('vi-VN') + ' ₫' : 'Không có'}
+      </div>
+
+      <div style="background:#f8fafc;border-left:4px solid #8b5cf6;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Tiền công thợ:</strong> ${Number(laborCost || 0).toLocaleString('vi-VN')} ₫
       </div>
 
       <div style="background:#f8fafc;border-left:4px solid #f59e0b;padding:12px;border-radius:8px;margin:12px 0;">
@@ -98,8 +109,35 @@ const completionTemplate = ({ customerName, ticketCode, pickupNote }) => {
   `;
 };
 
+const inventoryRejectedTemplate = ({ customerName, ticketCode, message }) => {
+  return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thông báo linh kiện - TechCare</title>
+</head>
+<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
+  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#ef4444,#f97316);color:white;padding:20px;">
+      <h1 style="margin:0;font-size:22px;">TechCare - Thông báo linh kiện</h1>
+      <p style="margin:8px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
+    </div>
+    <div style="padding:20px;line-height:1.6;">
+      <p>Xin chào <strong>${customerName}</strong>,</p>
+      <p>${message || 'Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.'}</p>
+      <p>Chúng tôi sẽ liên hệ lại khi có linh kiện phù hợp.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+};
+
 module.exports = {
   inviteTemplate,
   approvalTemplate,
   completionTemplate,
+  inventoryRejectedTemplate,
 };

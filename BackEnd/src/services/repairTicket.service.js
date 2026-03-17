@@ -3,8 +3,9 @@ const RepairTicket = require('../models/repairTicket.model');
 const User = require('../models/user.model');
 const Part = require('../models/part.model');
 const InventoryTransaction = require('../models/inventoryTransaction.model');
+const StockAlert = require('../models/stockAlert.model');
 const { sendMail } = require('./mail.service');
-const { approvalTemplate, completionTemplate } = require('../utils/mailTemplates');
+const { approvalTemplate, completionTemplate, inventoryRejectedTemplate } = require('../utils/mailTemplates');
 const ROLES = require('../constants/roles.constant');
 
 function generateTicketCode() {
@@ -52,8 +53,8 @@ async function assignTechnician(ticketId, technicianId, managerId) {
 
   ticket.technician = technicianId;
   ticket.managerAssignedBy = managerId;
-  ticket.status = 'MANAGER_ASSIGNED';
-  appendHistory(ticket, 'MANAGER_ASSIGNED', managerId, 'Manager đã phân công kỹ thuật viên');
+  ticket.status = 'DIAGNOSING';
+  appendHistory(ticket, 'DIAGNOSING', managerId, 'Manager đã phân công kỹ thuật viên');
 
   await ticket.save();
   return ticket;
@@ -75,6 +76,8 @@ async function requestInventory(ticketId, data, technicianId) {
       requiredParts: [],
       noteFromTechnician: data.noteFromTechnician || 'Không cần linh kiện thay thế',
     };
+    ticket.status = 'INVENTORY_APPROVED';
+    appendHistory(ticket, 'INVENTORY_APPROVED', technicianId, 'Không cần linh kiện thay thế');
     return ticket.save();
   }
 
@@ -102,24 +105,26 @@ async function respondInventory(ticketId, data, storekeeperId) {
     throw new Error('NO_PENDING_INVENTORY_REQUEST');
   }
 
-  const status = data.available ? 'AVAILABLE' : 'UNAVAILABLE';
+  const status = data.available ? 'APPROVED' : 'REJECTED';
 
   ticket.inventoryRequest.status = status;
   ticket.inventoryRequest.noteFromStorekeeper = data.noteFromStorekeeper || '';
   ticket.inventoryRequest.respondedAt = new Date();
-  ticket.status = 'MANAGER_ASSIGNED';
+  ticket.status = status === 'APPROVED' ? 'INVENTORY_APPROVED' : 'INVENTORY_REJECTED';
 
-  appendHistory(ticket, 'MANAGER_ASSIGNED', storekeeperId, `Kho phản hồi: ${status}`);
+  appendHistory(ticket, ticket.status, storekeeperId, `Kho phản hồi: ${status}`);
 
   await ticket.save();
   return ticket;
 }
 
 async function sendQuotation(ticketId, data, technicianId) {
-  const ticket = await RepairTicket.findById(ticketId).populate({
-    path: 'device',
-    populate: { path: 'customer' },
-  });
+  const ticket = await RepairTicket.findById(ticketId)
+    .populate({
+      path: 'device',
+      populate: { path: 'customer' },
+    })
+    .populate('inventoryRequest.requiredParts.part');
 
   if (!ticket) throw new Error('NOT_FOUND');
   if (!ticket.technician || ticket.technician.toString() !== technicianId) {
@@ -130,9 +135,14 @@ async function sendQuotation(ticketId, data, technicianId) {
     throw new Error('WAITING_INVENTORY_RESPONSE');
   }
 
+  if (ticket.status !== 'INVENTORY_APPROVED') {
+    throw new Error('INVENTORY_NOT_APPROVED');
+  }
+
   ticket.quote = {
     diagnosisResult: data.diagnosisResult,
     estimatedCost: data.estimatedCost,
+    laborCost: data.laborCost,
     workDescription: data.workDescription,
     estimatedCompletionDate: data.estimatedCompletionDate,
     sentAt: new Date(),
@@ -140,9 +150,9 @@ async function sendQuotation(ticketId, data, technicianId) {
 
   ticket.approvalToken = crypto.randomUUID();
   ticket.approvalExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  ticket.status = 'WAITING_CUSTOMER_APPROVAL';
+  ticket.status = 'QUOTED';
 
-  appendHistory(ticket, 'WAITING_CUSTOMER_APPROVAL', technicianId, 'Kỹ thuật viên gửi báo giá cho khách hàng');
+  appendHistory(ticket, 'QUOTED', technicianId, 'Kỹ thuật viên gửi báo giá cho khách hàng');
 
   await ticket.save();
 
@@ -152,13 +162,23 @@ async function sendQuotation(ticketId, data, technicianId) {
 
   const customer = ticket.device?.customer;
   if (customer?.email) {
+    const requiredParts = ticket.inventoryRequest?.requiredParts || [];
+    const partsCount = requiredParts.reduce((total, item) => total + (item.quantity || 0), 0);
+    const partsCost = requiredParts.reduce(
+      (total, item) => total + (item.part?.price || 0) * (item.quantity || 0),
+      0,
+    );
+
     const html = approvalTemplate({
       customerName: customer.fullName,
       ticketCode: ticket.ticketCode,
       diagnosisResult: data.diagnosisResult,
       estimatedCost: data.estimatedCost,
+      laborCost: data.laborCost,
       workDescription: data.workDescription,
       estimatedCompletionDate: data.estimatedCompletionDate,
+      partsCost,
+      partsCount,
       approveUrl,
       rejectUrl,
     });
@@ -182,16 +202,16 @@ async function customerApprove(token) {
     throw new Error('INVALID_OR_EXPIRED');
   }
 
-  if (ticket.status === 'APPROVED') return ticket;
-  if (ticket.status === 'REJECTED') throw new Error('ALREADY_REJECTED');
+  if (ticket.status === 'CUSTOMER_APPROVED') return ticket;
+  if (ticket.status === 'CUSTOMER_REJECTED') throw new Error('ALREADY_REJECTED');
 
-  ticket.status = 'APPROVED';
+  ticket.status = 'CUSTOMER_APPROVED';
   ticket.quote = ticket.quote || {};
   ticket.quote.customerDecisionAt = new Date();
   ticket.approvalToken = null;
   ticket.approvalExpireAt = null;
 
-  appendHistory(ticket, 'APPROVED', null, 'Khách hàng đồng ý qua email');
+  appendHistory(ticket, 'CUSTOMER_APPROVED', null, 'Khách hàng đồng ý qua email');
   await ticket.save();
   return ticket;
 }
@@ -205,17 +225,54 @@ async function customerReject(token) {
     throw new Error('INVALID_OR_EXPIRED');
   }
 
-  if (ticket.status === 'REJECTED') return ticket;
-  if (ticket.status === 'APPROVED') throw new Error('ALREADY_APPROVED');
+  if (ticket.status === 'CUSTOMER_REJECTED') return ticket;
+  if (ticket.status === 'CUSTOMER_APPROVED') throw new Error('ALREADY_APPROVED');
 
-  ticket.status = 'REJECTED';
+  ticket.status = 'CUSTOMER_REJECTED';
   ticket.quote = ticket.quote || {};
   ticket.quote.customerDecisionAt = new Date();
   ticket.approvalToken = null;
   ticket.approvalExpireAt = null;
 
-  appendHistory(ticket, 'REJECTED', null, 'Khách hàng từ chối qua email');
+  appendHistory(ticket, 'CUSTOMER_REJECTED', null, 'Khách hàng từ chối qua email');
   await ticket.save();
+  return ticket;
+}
+
+async function sendInventoryRejection(ticketId, data, technicianId) {
+  const ticket = await RepairTicket.findById(ticketId).populate({
+    path: 'device',
+    populate: { path: 'customer' },
+  });
+
+  if (!ticket) throw new Error('NOT_FOUND');
+  if (!ticket.technician || ticket.technician.toString() !== technicianId) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  if (ticket.status !== 'INVENTORY_REJECTED') {
+    throw new Error('INVENTORY_NOT_REJECTED');
+  }
+
+  const customer = ticket.device?.customer;
+  if (customer?.email) {
+    const html = inventoryRejectedTemplate({
+      customerName: customer.fullName,
+      ticketCode: ticket.ticketCode,
+      message: data.message,
+    });
+
+    await sendMail({
+      to: customer.email,
+      subject: `TechCare - Thông báo linh kiện cho phiếu ${ticket.ticketCode}`,
+      html,
+    });
+  }
+
+  ticket.status = 'CUSTOMER_REJECTED';
+  appendHistory(ticket, 'CUSTOMER_REJECTED', technicianId, 'Thông báo kho từ chối linh kiện');
+  await ticket.save();
+
   return ticket;
 }
 
@@ -225,7 +282,7 @@ async function startRepair(ticketId, technicianId) {
   if (!ticket.technician || ticket.technician.toString() !== technicianId) {
     throw new Error('UNAUTHORIZED');
   }
-  if (ticket.status !== 'APPROVED') throw new Error('NOT_APPROVED_YET');
+  if (ticket.status !== 'CUSTOMER_APPROVED') throw new Error('NOT_APPROVED_YET');
 
   ticket.status = 'IN_PROGRESS';
   appendHistory(ticket, 'IN_PROGRESS', technicianId, 'Bắt đầu sửa chữa');
@@ -244,16 +301,24 @@ async function completeTicket(ticketId, data, technicianId) {
     throw new Error('UNAUTHORIZED');
   }
 
-  if (ticket.status !== 'IN_PROGRESS' && ticket.status !== 'APPROVED') {
+  if (ticket.status !== 'IN_PROGRESS' && ticket.status !== 'CUSTOMER_APPROVED') {
     throw new Error('INVALID_STATUS_TO_COMPLETE');
   }
 
-  const usedParts = Array.isArray(data.usedParts) ? data.usedParts : [];
+  let usedParts = Array.isArray(data.usedParts) ? data.usedParts : [];
+
+  if (usedParts.length === 0 && ticket.inventoryRequest?.status === 'APPROVED') {
+    usedParts = (ticket.inventoryRequest.requiredParts || []).map((item) => ({
+      part: item.part,
+      quantity: item.quantity,
+    }));
+  }
 
   for (const partItem of usedParts) {
     if (!partItem.part || !partItem.quantity) continue;
 
-    const part = await Part.findById(partItem.part);
+    const partId = typeof partItem.part === 'object' ? partItem.part._id || partItem.part : partItem.part;
+    const part = await Part.findById(partId);
     if (!part) throw new Error('PART_NOT_FOUND');
     if (part.stock < partItem.quantity) throw new Error('PART_OUT_OF_STOCK');
 
@@ -267,6 +332,14 @@ async function completeTicket(ticketId, data, technicianId) {
       type: 'OUT',
       createdBy: technicianId,
     });
+
+    if (part.stock <= part.minStock) {
+      await StockAlert.create({
+        part: part._id,
+        createdBy: technicianId,
+        message: `Tồn kho thấp sau sử dụng: ${part.stock}/${part.minStock}`,
+      });
+    }
   }
 
   ticket.repairParts = usedParts;
@@ -307,8 +380,17 @@ async function getAllTickets(query = {}, user = null) {
     filter.technician = user.userId;
   }
 
-  if (user?.role === ROLES.STOREKEEPER) {
+
+  if (status === 'WAITING_INVENTORY') {
     filter['inventoryRequest.status'] = 'PENDING';
+  }
+
+  if (status === 'INVENTORY_APPROVED') {
+    filter['inventoryRequest.status'] = 'APPROVED';
+  }
+
+  if (status === 'INVENTORY_REJECTED') {
+    filter['inventoryRequest.status'] = 'REJECTED';
   }
 
   const tickets = await RepairTicket.find(filter)
@@ -322,6 +404,7 @@ async function getAllTickets(query = {}, user = null) {
     .populate('technician', 'fullName role')
     .populate('createdBy', 'fullName role')
     .populate('managerAssignedBy', 'fullName role')
+    .populate('inventoryRequest.requiredParts.part', 'partName brand price')
     .lean();
 
   const total = await RepairTicket.countDocuments(filter);
@@ -360,6 +443,7 @@ module.exports = {
   requestInventory,
   respondInventory,
   sendQuotation,
+  sendInventoryRejection,
   customerApprove,
   customerReject,
   startRepair,
