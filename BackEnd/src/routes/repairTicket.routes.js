@@ -24,6 +24,7 @@ router.patch(
 );
 
 router.patch('/:id/quotation', auth, role(ROLES.TECHNICIAN), controller.sendQuotation);
+router.patch('/:id/inventory-reject-mail', auth, role(ROLES.TECHNICIAN), controller.sendInventoryRejection);
 router.patch('/:id/start', auth, role(ROLES.TECHNICIAN), controller.startRepair);
 router.patch('/:id/complete', auth, role(ROLES.TECHNICIAN), controller.complete);
 

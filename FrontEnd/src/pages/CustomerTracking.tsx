@@ -25,24 +25,28 @@ interface Ticket {
 const getStatusBadge = (status: string) => {
   const colors: Record<string, string> = {
     RECEIVED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-    MANAGER_ASSIGNED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    DIAGNOSING: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
     WAITING_INVENTORY: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
-    WAITING_CUSTOMER_APPROVAL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-    APPROVED: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    INVENTORY_APPROVED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    INVENTORY_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    QUOTED: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    CUSTOMER_APPROVED: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    CUSTOMER_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     IN_PROGRESS: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     COMPLETED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-    REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   };
 
   const labels: Record<string, string> = {
     RECEIVED: 'Tiếp nhận',
-    MANAGER_ASSIGNED: 'Đã phân công',
-    WAITING_INVENTORY: 'Chờ kho phản hồi',
-    WAITING_CUSTOMER_APPROVAL: 'Chờ khách duyệt',
-    APPROVED: 'Đã duyệt',
+    DIAGNOSING: 'Kỹ thuật kiểm tra',
+    WAITING_INVENTORY: 'Chờ kho duyệt',
+    INVENTORY_APPROVED: 'Kho đã duyệt',
+    INVENTORY_REJECTED: 'Kho từ chối',
+    QUOTED: 'Đã gửi báo giá',
+    CUSTOMER_APPROVED: 'Khách đồng ý',
+    CUSTOMER_REJECTED: 'Khách từ chối',
     IN_PROGRESS: 'Đang sửa',
     COMPLETED: 'Hoàn thành',
-    REJECTED: 'Từ chối',
   };
 
   return (

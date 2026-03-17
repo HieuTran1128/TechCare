@@ -67,6 +67,15 @@ exports.customerReject = async (req, res) => {
   }
 };
 
+exports.sendInventoryRejection = async (req, res) => {
+  try {
+    const ticket = await service.sendInventoryRejection(req.params.id, req.body, req.user.userId);
+    res.json(ticket);
+  } catch (err) {
+    sendError(res, 400, err.message || 'Không thể gửi thông báo cho khách hàng');
+  }
+};
+
 exports.startRepair = async (req, res) => {
   try {
     const ticket = await service.startRepair(req.params.id, req.user.userId);

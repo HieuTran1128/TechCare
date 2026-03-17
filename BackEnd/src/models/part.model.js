@@ -6,6 +6,10 @@ const partSchema = new mongoose.Schema({
     required: true
   },
   brand: String,
+  imageUrl: {
+    type: String,
+    required: true
+  },
   price: {
     type: Number,
     required: true

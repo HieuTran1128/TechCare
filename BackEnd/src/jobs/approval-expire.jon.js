@@ -4,11 +4,11 @@ const RepairTicket = require('../models/repairTicket.model');
 cron.schedule('*/5 * * * *', async () => {
   await RepairTicket.updateMany(
     {
-      status: 'WAITING_APPROVAL',
+      status: 'QUOTED',
       approvalExpireAt: { $lt: new Date() }
     },
     {
-      status: 'REJECTED'
+      status: 'CUSTOMER_REJECTED'
     }
   );
 
