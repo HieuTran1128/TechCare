@@ -71,6 +71,15 @@ exports.getImportHistory = async (_req, res) => {
   }
 };
 
+exports.getUsageHistory = async (_req, res) => {
+  try {
+    const history = await service.listUsageHistory();
+    res.json(history);
+  } catch (err) {
+    sendError(res, 500, err.message);
+  }
+};
+
 exports.createAlert = async (req, res) => {
   try {
     const alert = await service.createStockAlert(req.params.id, req.body.message, req.user.userId);

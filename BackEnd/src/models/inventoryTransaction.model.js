@@ -17,6 +17,11 @@ const inventoryTransactionSchema = new mongoose.Schema({
     required: true
   },
 
+  unitPrice: {
+    type: Number,
+    default: 0
+  },
+
   type: {
     type: String,
     enum: ['IN', 'OUT'],
