@@ -21,7 +21,7 @@ interface ImportRecord {
   importPrice: number;
   total: number;
   createdAt: string;
-  product?: { partName?: string; brand?: string };
+  product?: { _id?: string; partName?: string; brand?: string };
   supplier?: { name?: string };
   createdBy?: { fullName?: string; role?: string };
   note?: string;
@@ -33,6 +33,17 @@ interface AlertRecord {
   message: string;
   createdAt: string;
   part?: { partName?: string; brand?: string; stock?: number; minStock?: number; imageUrl?: string };
+  createdBy?: { fullName?: string; role?: string };
+}
+
+interface UsageRecord {
+  _id: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  createdAt: string;
+  part?: { partName?: string; brand?: string };
+  ticket?: { ticketCode?: string };
   createdBy?: { fullName?: string; role?: string };
 }
 
@@ -85,6 +96,7 @@ export const Inventory: React.FC = () => {
   const pageSize = 6;
   const [imports, setImports] = useState<ImportRecord[]>([]);
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
+  const [usageHistory, setUsageHistory] = useState<UsageRecord[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [requests, setRequests] = useState<InventoryRequest[]>([]);
   const [stats, setStats] = useState<InventoryStats>({
@@ -94,7 +106,7 @@ export const Inventory: React.FC = () => {
     outOfStock: 0,
   });
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'parts' | 'import' | 'alerts' | 'suppliers' | 'requests'>('parts');
+  const [tab, setTab] = useState<'parts' | 'import' | 'usage' | 'alerts' | 'suppliers' | 'requests'>('parts');
 
   const [form, setForm] = useState({
     partName: '',
@@ -112,6 +124,7 @@ export const Inventory: React.FC = () => {
   const [importModalPart, setImportModalPart] = useState<Part | null>(null);
   const [alertMsg, setAlertMsg] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
+  const [sortOption, setSortOption] = useState<'name-asc' | 'price-desc' | 'price-asc' | 'stock-desc' | 'stock-asc'>('name-asc');
   const [feedback, setFeedback] = useState('');
   const [supplierForm, setSupplierForm] = useState({
     name: '',
@@ -132,6 +145,12 @@ export const Inventory: React.FC = () => {
     if (!isManager) return;
     const res = await axios.get(`${API_BASE}/parts/import-history`, { withCredentials: true });
     setImports(res.data || []);
+  };
+
+  const loadUsageHistory = async () => {
+    if (!isManager && !isStorekeeper) return;
+    const res = await axios.get(`${API_BASE}/parts/usage-history`, { withCredentials: true });
+    setUsageHistory(res.data || []);
   };
 
   const loadAlerts = async () => {
@@ -205,7 +224,7 @@ export const Inventory: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadParts(), loadImports(), loadAlerts(), loadStats(), loadSuppliers(), loadRequests()])
+    Promise.all([loadParts(), loadImports(), loadUsageHistory(), loadAlerts(), loadStats(), loadSuppliers(), loadRequests()])
       .catch(() => undefined)
       .finally(() => setLoading(false));
   }, [search]);
@@ -214,16 +233,41 @@ export const Inventory: React.FC = () => {
     setCurrentPage(1);
   }, [search, parts.length]);
 
+  const lowStockThreshold = 10;
   const lowStockParts = useMemo(
-    () => parts.filter((p) => p.stock <= p.minStock),
+    () => parts.filter((p) => p.stock > 0 && p.stock < lowStockThreshold),
     [parts],
   );
+  const outOfStockParts = useMemo(() => parts.filter((p) => p.stock <= 0), [parts]);
 
-  const totalPages = Math.max(1, Math.ceil(parts.length / pageSize));
+  const sortedParts = useMemo(() => {
+    const sorted = [...parts];
+    switch (sortOption) {
+      case 'price-asc':
+        sorted.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-desc':
+        sorted.sort((a, b) => b.price - a.price);
+        break;
+      case 'stock-asc':
+        sorted.sort((a, b) => a.stock - b.stock);
+        break;
+      case 'stock-desc':
+        sorted.sort((a, b) => b.stock - a.stock);
+        break;
+      case 'name-asc':
+      default:
+        sorted.sort((a, b) => a.partName.localeCompare(b.partName, 'vi', { sensitivity: 'base' }));
+        break;
+    }
+    return sorted;
+  }, [parts, sortOption]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedParts.length / pageSize));
   const pagedParts = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return parts.slice(start, start + pageSize);
-  }, [parts, currentPage]);
+    return sortedParts.slice(start, start + pageSize);
+  }, [sortedParts, currentPage]);
 
   const createPart = async () => {
     if (!form.partName.trim()) {
@@ -313,6 +357,19 @@ export const Inventory: React.FC = () => {
     await Promise.all([loadParts(), loadImports(), loadStats()]);
   };
 
+  const getImportStats = (partId: string) => {
+    const history = imports.filter((item) => item.product?._id === partId);
+    if (history.length === 0) {
+      return { latestPrice: 0, avgPrice: 0 };
+    }
+
+    const sorted = [...history].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const latestPrice = sorted[0]?.importPrice || 0;
+    const avgPrice = history.reduce((sum, item) => sum + item.importPrice, 0) / history.length;
+
+    return { latestPrice, avgPrice };
+  };
+
   const updatePartInline = async (partId: string) => {
     const price = priceDraft[partId];
 
@@ -372,6 +429,11 @@ export const Inventory: React.FC = () => {
               Lịch sử nhập
             </button>
           )}
+          {(isManager || isStorekeeper) && (
+            <button onClick={() => setTab('usage')} className={`px-4 py-2 rounded-lg ${tab === 'usage' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
+              Lịch sử xuất
+            </button>
+          )}
           {isManager && (
             <button onClick={() => setTab('suppliers')} className={`px-4 py-2 rounded-lg ${tab === 'suppliers' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
               Nhà cung cấp
@@ -392,8 +454,8 @@ export const Inventory: React.FC = () => {
         {[
           { label: 'Tổng linh kiện', value: stats.totalParts },
           { label: 'Tổng tồn kho', value: stats.totalQuantity },
-          { label: 'Sắp hết', value: stats.lowStock },
-          { label: 'Hết hàng', value: stats.outOfStock },
+          { label: 'Sắp hết', value: lowStockParts.length },
+          { label: 'Hết hàng', value: outOfStockParts.length },
         ].map((item) => (
           <div key={item.label} className="bg-white border rounded-xl p-3">
             <p className="text-xs text-slate-500">{item.label}</p>
@@ -411,7 +473,17 @@ export const Inventory: React.FC = () => {
               className="border rounded-lg px-3 py-2"
               placeholder="Tìm linh kiện..."
             />
-            <span className="text-sm text-slate-500">Sắp hết: {lowStockParts.length}</span>
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+              className="border rounded-lg px-3 py-2 bg-white"
+            >
+              <option value="name-asc">Tên A → Z</option>
+              <option value="price-asc">Giá tăng dần</option>
+              <option value="price-desc">Giá giảm dần</option>
+              <option value="stock-asc">Số lượng tăng dần</option>
+              <option value="stock-desc">Số lượng giảm dần</option>
+            </select>
           </div>
 
           {isManager && (
@@ -470,8 +542,8 @@ export const Inventory: React.FC = () => {
             {pagedParts.map((part) => {
               const priceValue = priceDraft[part._id] ?? part.price;
               const stockValue = part.stock;
-              const isLowStock = part.stock > 0 && part.stock <= part.minStock;
-              const isOutOfStock = part.stock === 0;
+              const isLowStock = part.stock > 0 && part.stock < lowStockThreshold;
+              const isOutOfStock = part.stock <= 0;
 
               return (
                 <div key={part._id} className="bg-white border rounded-xl p-4 flex flex-col gap-4">
@@ -491,7 +563,7 @@ export const Inventory: React.FC = () => {
                         <p className="font-semibold text-base">{part.partName}</p>
                         <p className="text-sm text-slate-500">Hãng: {part.brand || 'N/A'}</p>
                         {isOutOfStock && <p className="text-xs text-red-600 font-semibold">Hết hàng</p>}
-                        {!isOutOfStock && isLowStock && <p className="text-xs text-amber-600 font-semibold">Sắp hết hàng</p>}
+                        {isLowStock && <p className="text-xs text-amber-600 font-semibold">Sắp hết hàng</p>}
                       </div>
                     </div>
 
@@ -531,6 +603,21 @@ export const Inventory: React.FC = () => {
                         value={stockValue}
                         disabled
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs uppercase text-slate-500 font-semibold">Giá nhập gần nhất</label>
+                      <div className="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50">
+                        {getImportStats(part._id).latestPrice.toLocaleString('vi-VN')} ₫
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase text-slate-500 font-semibold">Giá nhập trung bình</label>
+                      <div className="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50">
+                        {Math.round(getImportStats(part._id).avgPrice).toLocaleString('vi-VN')} ₫
+                      </div>
                     </div>
                   </div>
 
@@ -580,6 +667,20 @@ export const Inventory: React.FC = () => {
               <div key={item._id} className="flex flex-col md:flex-row md:justify-between border-b py-2 gap-2">
                 <span>{item.product?.partName || 'N/A'} • {item.quantity} linh kiện • {item.importPrice.toLocaleString('vi-VN')} ₫</span>
                 <span>{item.supplier?.name || 'N/A'} • {item.batchCode || 'N/A'} • {new Date(item.createdAt).toLocaleString('vi-VN')} • {item.createdBy?.fullName || 'N/A'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'usage' && (isManager || isStorekeeper) && (
+        <div className="bg-white border rounded-xl p-4">
+          <h2 className="font-semibold mb-3">Lịch sử xuất kho sửa chữa</h2>
+          <div className="space-y-2 text-sm">
+            {usageHistory.map((item) => (
+              <div key={item._id} className="flex flex-col md:flex-row md:justify-between border-b py-2 gap-2">
+                <span>{item.part?.partName || 'N/A'} • {item.quantity} linh kiện • {Number(item.unitPrice || 0).toLocaleString('vi-VN')} ₫</span>
+                <span>{item.ticket?.ticketCode || 'N/A'} • {new Date(item.createdAt).toLocaleString('vi-VN')} • {item.createdBy?.fullName || 'N/A'}</span>
               </div>
             ))}
           </div>

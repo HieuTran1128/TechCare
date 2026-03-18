@@ -206,6 +206,25 @@ async function listImportHistory() {
   }));
 }
 
+async function listUsageHistory() {
+  const transactions = await InventoryTransaction.find({ type: 'OUT' })
+    .populate('part', 'partName brand price')
+    .populate('ticket', 'ticketCode')
+    .populate('createdBy', 'fullName role')
+    .sort({ createdAt: -1 });
+
+  return transactions.map((transaction) => ({
+    _id: transaction._id,
+    part: transaction.part,
+    ticket: transaction.ticket,
+    quantity: transaction.quantity,
+    unitPrice: transaction.unitPrice || transaction.part?.price || 0,
+    total: (transaction.unitPrice || transaction.part?.price || 0) * transaction.quantity,
+    createdAt: transaction.createdAt,
+    createdBy: transaction.createdBy,
+  }));
+}
+
 async function createStockAlert(partId, message, userId) {
   if (!message) throw new Error('MESSAGE_REQUIRED');
 
@@ -249,6 +268,7 @@ module.exports = {
   deletePart,
   importStock,
   listImportHistory,
+  listUsageHistory,
   createStockAlert,
   listStockAlerts,
   getInventoryStats,

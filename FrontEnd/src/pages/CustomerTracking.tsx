@@ -10,6 +10,9 @@ interface Ticket {
   initialIssue: string;
   status: string;
   createdAt: string;
+  inventoryRequest?: {
+    status?: string;
+  };
   device?: {
     brand?: string;
     model?: string;
@@ -22,7 +25,7 @@ interface Ticket {
   };
 }
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, inventoryStatus?: string) => {
   const colors: Record<string, string> = {
     RECEIVED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
     DIAGNOSING: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -36,6 +39,8 @@ const getStatusBadge = (status: string) => {
     COMPLETED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   };
 
+  const isInventoryRejected = status === 'CUSTOMER_REJECTED' && inventoryStatus === 'REJECTED';
+
   const labels: Record<string, string> = {
     RECEIVED: 'Tiếp nhận',
     DIAGNOSING: 'Kỹ thuật kiểm tra',
@@ -44,7 +49,7 @@ const getStatusBadge = (status: string) => {
     INVENTORY_REJECTED: 'Kho từ chối',
     QUOTED: 'Đã gửi báo giá',
     CUSTOMER_APPROVED: 'Khách đồng ý',
-    CUSTOMER_REJECTED: 'Khách từ chối',
+    CUSTOMER_REJECTED: isInventoryRejected ? 'Kho từ chối' : 'Khách từ chối',
     IN_PROGRESS: 'Đang sửa',
     COMPLETED: 'Hoàn thành',
   };
@@ -150,7 +155,7 @@ export const CustomerTracking: React.FC = () => {
                     <div>
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">#{ticket.ticketCode}</h3>
                     </div>
-                    {getStatusBadge(ticket.status)}
+                    {getStatusBadge(ticket.status, ticket.inventoryRequest?.status)}
                   </div>
 
                   <div className="space-y-1 text-sm text-slate-700 dark:text-slate-200">

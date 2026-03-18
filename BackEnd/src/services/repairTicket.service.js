@@ -329,6 +329,7 @@ async function completeTicket(ticketId, data, technicianId) {
       part: part._id,
       ticket: ticket._id,
       quantity: partItem.quantity,
+      unitPrice: part.price || 0,
       type: 'OUT',
       createdBy: technicianId,
     });

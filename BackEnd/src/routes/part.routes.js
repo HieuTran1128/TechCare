@@ -18,6 +18,9 @@ router.post('/:id/import', auth, role(ROLES.MANAGER), controller.importStock);
 router.post('/import', auth, role(ROLES.MANAGER), controller.importOrder);
 router.get('/import-history', auth, role(ROLES.MANAGER), controller.getImportHistory);
 
+// Manager + storekeeper - usage history (parts taken for repairs)
+router.get('/usage-history', auth, role(ROLES.MANAGER, ROLES.STOREKEEPER), controller.getUsageHistory);
+
 // Manager dashboard stats
 router.get('/stats/summary', auth, role(ROLES.MANAGER, ROLES.STOREKEEPER), controller.getStats);
 
