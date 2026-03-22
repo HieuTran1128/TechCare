@@ -220,6 +220,51 @@ exports.complete = async (req, res) => {
   }
 };
 
+exports.findByCode = async (req, res) => {
+  try {
+    const ticket = await service.findTicketByCode(req.query.ticketCode);
+    res.json(ticket);
+  } catch (err) {
+    sendError(res, 400, err.message || 'Không tìm thấy phiếu');
+  }
+};
+
+exports.searchByCode = async (req, res) => {
+  try {
+    const data = await service.searchTicketsByCodeKeyword(req.query.keyword, req.query.limit);
+    res.json({ data });
+  } catch (err) {
+    sendError(res, 400, err.message || 'Không thể gợi ý mã phiếu');
+  }
+};
+
+exports.createPayosPayment = async (req, res) => {
+  try {
+    const result = await service.createPayosPayment(req.params.id, req.user.userId);
+    res.json(result);
+  } catch (err) {
+    sendError(res, 400, err.message || 'Không thể tạo phiên thanh toán payOS');
+  }
+};
+
+exports.markPaid = async (req, res) => {
+  try {
+    const ticket = await service.markTicketAsPaid(req.params.id, req.body, req.user.userId);
+    res.json(ticket);
+  } catch (err) {
+    sendError(res, 400, err.message || 'Không thể cập nhật trạng thái thanh toán');
+  }
+};
+
+exports.payosWebhook = async (req, res) => {
+  try {
+    const result = await service.handlePayosWebhook(req.body);
+    res.json(result);
+  } catch (err) {
+    sendError(res, 400, err.message || 'Webhook payOS không hợp lệ');
+  }
+};
+
 exports.getAll = async (req, res) => {
   try {
     const result = await service.getAllTickets(

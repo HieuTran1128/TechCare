@@ -87,7 +87,7 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
           $cond: [
             {
               $and: [
-                { $eq: ['$status', 'COMPLETED'] },
+                { $eq: ['$status', 'PAYMENTED'] },
                 { $ne: ['$completedAt', null] },
               ],
             },
@@ -101,7 +101,7 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
           ],
         },
         revenueValue: {
-          $cond: [{ $eq: ['$status', 'COMPLETED'] }, { $ifNull: ['$finalCost', 0] }, 0],
+          $cond: [{ $eq: ['$status', 'PAYMENTED'] }, { $ifNull: ['$finalCost', 0] }, 0],
         },
       },
     },

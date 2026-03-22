@@ -35,6 +35,7 @@ interface Ticket {
 
 const statusLabels: Record<string, string> = {
   COMPLETED: 'Hoàn thành',
+  PAYMENTED: 'Đã thanh toán',
   REJECTED: 'Từ chối',
   PENDING: 'Đang chờ',
   IN_PROGRESS: 'Đang xử lý',
@@ -62,6 +63,7 @@ const statusColorClasses: Record<string, string> = {
   CUSTOMER_REJECTED: 'bg-red-100 text-red-700',
   IN_PROGRESS: 'bg-purple-100 text-purple-700',
   COMPLETED: 'bg-green-100 text-green-700',
+  PAYMENTED: 'bg-emerald-200 text-emerald-800',
   REJECTED: 'bg-red-100 text-red-700',
   CANCELLED: 'bg-slate-200 text-slate-700',
   PENDING: 'bg-yellow-100 text-yellow-700',
@@ -91,6 +93,9 @@ export const TechnicianBoard: React.FC = () => {
   const [note, setNote] = useState('');
   const [rejectionMessage, setRejectionMessage] = useState('Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.');
   const [quoteError, setQuoteError] = useState('');
+  const [doneSearch, setDoneSearch] = useState('');
+  const [donePage, setDonePage] = useState(1);
+  const donePageSize = 6;
 
   const [quote, setQuote] = useState({
     diagnosisResult: '',
@@ -149,7 +154,28 @@ export const TechnicianBoard: React.FC = () => {
       tickets.filter((t) => ['DIAGNOSING', 'WAITING_INVENTORY', 'INVENTORY_APPROVED', 'INVENTORY_REJECTED', 'QUOTED', 'CUSTOMER_APPROVED', 'IN_PROGRESS'].includes(t.status)),
     [tickets],
   );
-  const done = useMemo(() => tickets.filter((t) => ['COMPLETED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED', ].includes(t.status)), [tickets]);
+  const doneRaw = useMemo(() => tickets.filter((t) => ['COMPLETED', 'PAYMENTED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED'].includes(t.status)), [tickets]);
+
+  const done = useMemo(() => {
+    const q = doneSearch.trim().toLowerCase();
+    if (!q) return doneRaw;
+    return doneRaw.filter((t) => {
+      const code = String(t.ticketCode || '').toLowerCase();
+      const customer = String(t.device?.customer?.fullName || '').toLowerCase();
+      const deviceType = String(t.device?.deviceType || '').toLowerCase();
+      const brand = String(t.device?.brand || '').toLowerCase();
+      const model = String(t.device?.model || '').toLowerCase();
+      const device = `${deviceType} ${brand} ${model}`.toLowerCase();
+      return code.includes(q) || customer.includes(q) || device.includes(q);
+    });
+  }, [doneRaw, doneSearch]);
+
+  const doneTotalPages = Math.max(1, Math.ceil(done.length / donePageSize));
+
+  const donePaged = useMemo(() => {
+    const start = (donePage - 1) * donePageSize;
+    return done.slice(start, start + donePageSize);
+  }, [done, donePage]);
 
   const assignTech = async (ticketId: string, technicianId: string) => {
     await axios.patch(`${API_BASE}/ticket/${ticketId}/assign`, { technicianId }, { withCredentials: true });
@@ -217,6 +243,14 @@ export const TechnicianBoard: React.FC = () => {
     loadTickets();
   };
 
+  useEffect(() => {
+    setDonePage(1);
+  }, [doneSearch]);
+
+  useEffect(() => {
+    if (donePage > doneTotalPages) setDonePage(doneTotalPages);
+  }, [donePage, doneTotalPages]);
+
   const renderTimeline = (status: string) => {
     const currentIdx = statusTimeline.indexOf(status);
     return (
@@ -249,7 +283,7 @@ export const TechnicianBoard: React.FC = () => {
           {pendingAssign.map((t) => (
             <div key={t._id} className="border rounded-xl p-3 mb-3">
               <p className="font-semibold">{t.ticketCode}</p>
-              <p className="text-sm">{t.device?.brand} {t.device?.model}</p>
+              <p className="text-sm">{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</p>
               <p className="text-xs text-slate-500">{t.initialIssue}</p>
               {isFrontdesk && (
                 <select defaultValue="" onChange={(e) => e.target.value && assignTech(t._id, e.target.value)} className="w-full mt-2 border rounded-lg px-2 py-1">
@@ -275,7 +309,7 @@ export const TechnicianBoard: React.FC = () => {
               </div>
               {renderTimeline(t.status)}
               <p className="text-sm mt-2">{t.device?.customer?.fullName}</p>
-              <p className="text-xs text-slate-500">{t.device?.deviceType || '-'} • {t.device?.brand}</p>
+              <p className="text-xs text-slate-500">{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</p>
               <p className="text-xs text-slate-500">{t.initialIssue}</p>
 
               {isTechnician && t.status === 'DIAGNOSING' && (
@@ -316,16 +350,37 @@ export const TechnicianBoard: React.FC = () => {
         </section>
 
         <section className="bg-white border rounded-2xl p-4">
-          <h2 className="font-semibold mb-3">Hoàn tất / Từ chối</h2>
-          {done.map((t) => (
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h2 className="font-semibold">Hoàn tất / Từ chối</h2>
+            <input
+              value={doneSearch}
+              onChange={(e) => setDoneSearch(e.target.value)}
+              placeholder="Tìm mã phiếu / khách / thiết bị"
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white w-52"
+            />
+          </div>
+
+          {donePaged.map((t) => (
             <div key={t._id} className="border rounded-xl p-3 mb-3">
-              <p className="font-semibold">{t.ticketCode}</p>
-              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${statusColorClasses[t.status] || 'bg-slate-100 text-slate-700'}`}>
-                {statusLabels[t.status] || t.status}
-              </span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="font-bold text-base text-slate-900">{t.ticketCode}</p>
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${statusColorClasses[t.status] || 'bg-slate-50 text-slate-500'}`}>
+                  {statusLabels[t.status] || t.status}
+                </span>
+              </div>
               <p className="text-sm">{t.device?.customer?.fullName}</p>
+              <p className="text-xs text-slate-500">{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</p>
+              <p className="text-xs text-slate-500">{t.initialIssue}</p>
             </div>
           ))}
+
+          <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <span>Trang {donePage}/{doneTotalPages}</span>
+            <div className="flex gap-1">
+              <button onClick={() => setDonePage((p) => Math.max(1, p - 1))} disabled={donePage <= 1} className="px-2 py-1 border rounded disabled:opacity-40">Trước</button>
+              <button onClick={() => setDonePage((p) => Math.min(doneTotalPages, p + 1))} disabled={donePage >= doneTotalPages} className="px-2 py-1 border rounded disabled:opacity-40">Sau</button>
+            </div>
+          </div>
         </section>
       </div>
 
@@ -335,7 +390,8 @@ export const TechnicianBoard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-lg">Xử lý phiếu {active.ticketCode}</h3>
-                <p className="text-xs text-slate-500">{active.device?.deviceType} • {active.device?.brand}</p>
+                <p className="text-xs text-slate-500">{active.device?.deviceType || '-'} • {active.device?.brand || '-'} • {active.device?.model || '-'}</p>
+                <p className="text-xs text-slate-600 mt-1">{active.initialIssue || 'Chưa có mô tả lỗi'}</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setActiveTab('request')} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'request' ? 'bg-blue-600 text-white' : 'border'}`}>Yêu cầu kho</button>
