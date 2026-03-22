@@ -27,6 +27,7 @@ interface Ticket {
 
 const statusLabels: Record<string, string> = {
   COMPLETED: 'Hoàn thành',
+  PAYMENTED: 'Đã thanh toán',
   REJECTED: 'Từ chối',
   PENDING: 'Đang chờ',
   IN_PROGRESS: 'Đang xử lý',
@@ -55,6 +56,7 @@ const statusColorClasses: Record<string, string> = {
   CUSTOMER_REJECTED: 'bg-red-100 text-red-700',
   IN_PROGRESS: 'bg-purple-100 text-purple-700',
   COMPLETED: 'bg-green-100 text-green-700',
+  PAYMENTED: 'bg-emerald-200 text-emerald-800',
   REJECTED: 'bg-red-100 text-red-700',
   CANCELLED: 'bg-slate-200 text-slate-700',
   PENDING: 'bg-yellow-100 text-yellow-700',
@@ -69,12 +71,15 @@ export const AdminDashboard: React.FC = () => {
     totalRevenue: 0,
   });
   const [latest, setLatest] = useState<Ticket[]>([]);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
 
   useEffect(() => {
     const load = async () => {
       const [s, t] = await Promise.all([
         axios.get(`${API_BASE}/ticket/manager/summary`, { withCredentials: true }),
-        axios.get(`${API_BASE}/ticket?limit=8&sort=-createdAt`, { withCredentials: true }),
+        axios.get(`${API_BASE}/ticket?limit=1000&sort=-createdAt`, { withCredentials: true }),
       ]);
       setSummary(s.data);
       setLatest(t.data.data || []);
@@ -87,6 +92,31 @@ export const AdminDashboard: React.FC = () => {
     if (!summary.totalTickets) return 0;
     return (summary.completedTickets / summary.totalTickets) * 100;
   }, [summary]);
+
+  const statusOptions = useMemo(() => {
+    const set = new Set(latest.map((t) => t.status).filter(Boolean));
+    return ['ALL', ...Array.from(set)];
+  }, [latest]);
+
+  const filteredLatest = useMemo(() => {
+    if (statusFilter === 'ALL') return latest;
+    return latest.filter((t) => t.status === statusFilter);
+  }, [latest, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLatest.length / pageSize));
+
+  const pagedLatest = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredLatest.slice(start, start + pageSize);
+  }, [filteredLatest, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const stats = [
     {
@@ -154,9 +184,31 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(2,6,23,.06)]">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <h2 className="font-bold text-slate-900">Đơn hàng gần đây</h2>
-          <span className="text-xs text-slate-500">Mới nhất 8 phiếu</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-500">Tổng {filteredLatest.length} đơn</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status === 'ALL' ? 'Tất cả trạng thái' : (statusLabels[status] || status)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+            >
+              <option value={5}>5 / trang</option>
+              <option value={10}>10 / trang</option>
+              <option value={20}>20 / trang</option>
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -170,11 +222,11 @@ export const AdminDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {latest.map((t) => (
+              {pagedLatest.map((t) => (
                 <tr key={t._id} className="border-b border-slate-100 last:border-b-0">
                   <td className="py-2.5 font-semibold text-slate-800">{t.ticketCode}</td>
                   <td>{t.device?.customer?.fullName || '-'}</td>
-                  <td>{t.device?.brand || '-'} {t.device?.model || ''}</td>
+                  <td>{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</td>
                   <td>
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${statusColorClasses[t.status] || 'bg-slate-100 text-slate-700'}`}>
                       {statusLabels[t.status] || t.status}
@@ -185,6 +237,24 @@ export const AdminDashboard: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 disabled:opacity-40"
+          >
+            Trước
+          </button>
+          <span className="text-xs text-slate-500">Trang {page}/{totalPages}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 disabled:opacity-40"
+          >
+            Sau
+          </button>
         </div>
       </section>
     </div>

@@ -28,6 +28,11 @@ router.patch('/:id/quotation', auth, role(ROLES.TECHNICIAN), controller.sendQuot
 router.patch('/:id/inventory-reject-mail', auth, role(ROLES.TECHNICIAN), controller.sendInventoryRejection);
 router.patch('/:id/start', auth, role(ROLES.TECHNICIAN), controller.startRepair);
 router.patch('/:id/complete', auth, role(ROLES.TECHNICIAN), controller.complete);
+router.get('/frontdesk/find-by-code', auth, role(ROLES.FRONTDESK, ROLES.MANAGER), controller.findByCode);
+router.get('/frontdesk/search-by-code', auth, role(ROLES.FRONTDESK, ROLES.MANAGER), controller.searchByCode);
+router.post('/:id/payment/payos', auth, role(ROLES.FRONTDESK, ROLES.MANAGER), controller.createPayosPayment);
+router.patch('/:id/payment/mark-paid', auth, role(ROLES.FRONTDESK, ROLES.MANAGER), controller.markPaid);
+router.post('/payment/payos/webhook', controller.payosWebhook);
 
 router.get('/customer-approve/:token', controller.customerApprove);
 router.get('/customer-reject/:token', controller.customerReject);

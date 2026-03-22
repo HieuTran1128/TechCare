@@ -6,7 +6,7 @@ export const ChatPage: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-4">
+    <div className="h-[calc(100vh-64px-48px)] min-h-0">
       <ChatBox
         currentUser={{
           userId: user?.id || 'guest-id',

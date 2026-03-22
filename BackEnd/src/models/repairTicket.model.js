@@ -49,6 +49,26 @@ const quoteSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const paymentSchema = new mongoose.Schema(
+  {
+    method: {
+      type: String,
+      enum: ['CASH', 'PAYOS'],
+    },
+    status: {
+      type: String,
+      enum: ['PENDING', 'PAID'],
+      default: 'PENDING',
+    },
+    paidAt: Date,
+    paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    amount: Number,
+    payosOrderCode: String,
+    payosCheckoutUrl: String,
+  },
+  { _id: false },
+);
+
 const repairTicketSchema = new mongoose.Schema(
   {
     ticketCode: String,
@@ -73,6 +93,7 @@ const repairTicketSchema = new mongoose.Schema(
         'CUSTOMER_REJECTED',
         'IN_PROGRESS',
         'COMPLETED',
+        'PAYMENTED',
         'DONE_INVENTORY_REJECTED',
       ],
       default: 'RECEIVED',
@@ -87,6 +108,7 @@ const repairTicketSchema = new mongoose.Schema(
 
     finalCost: Number,
     completedAt: Date,
+    payment: paymentSchema,
 
     repairParts: [repairPartSchema],
     statusHistory: [statusHistorySchema],

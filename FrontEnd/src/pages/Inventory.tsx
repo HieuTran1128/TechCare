@@ -978,7 +978,8 @@ export const Inventory: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <div>
                         <p className="font-semibold text-slate-900">{ticket.ticketCode || ticket._id}</p>
-                        <p className="text-xs text-slate-500">{ticket.device?.brand} {ticket.device?.model} • {ticket.device?.customer?.fullName || 'N/A'}</p>
+                        <p className="text-xs font-medium text-slate-700">Khách: {ticket.device?.customer?.fullName || 'N/A'}</p>
+                        <p className="text-xs text-slate-500">{ticket.device?.deviceType || '-'} • {ticket.device?.brand || '-'} • {ticket.device?.model || '-'}</p>
                         <p className="text-xs text-slate-500">Kỹ thuật: {technicianName}</p>
                       </div>
                       <span

@@ -15,6 +15,7 @@ import { ReceptionistBoard } from './pages/ReceptionistBoard';
 import Activate from './pages/ActivateAccount';
 import { ChatPage } from './pages/ChatPage';
 import { KPIDashboard } from './pages/KPIDashboard';
+import { PaymentResult } from './pages/PaymentResult';
 import { Toaster } from 'react-hot-toast';
 
 const AuthInitializer = () => {
@@ -53,6 +54,7 @@ const AppRoutes = () => {
       <Route path="/" element={!user ? <Login /> : <Navigate to={roleHome(user.role)} replace />} />
       <Route path="/activate" element={<Activate />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/payment-result" element={<PaymentResult />} />
       <Route path="/tracking" element={<Layout><CustomerTracking /></Layout>} />
 
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['manager']}><Layout><AdminDashboard /></Layout></ProtectedRoute>} />
