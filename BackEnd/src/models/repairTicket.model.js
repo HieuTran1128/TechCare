@@ -73,6 +73,7 @@ const repairTicketSchema = new mongoose.Schema(
         'CUSTOMER_REJECTED',
         'IN_PROGRESS',
         'COMPLETED',
+        'DONE_INVENTORY_REJECTED',
       ],
       default: 'RECEIVED',
     },

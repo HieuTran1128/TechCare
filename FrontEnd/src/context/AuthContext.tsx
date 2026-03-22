@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import toast from 'react-hot-toast';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -43,7 +42,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         logout();
-        toast.error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
       }
     } finally {
       setIsLoading(false);
@@ -87,8 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('techcare_user', JSON.stringify(updated));
       return updated;
     });
-
-    toast.success('Avatar updated successfully!');
   };
 
   return (

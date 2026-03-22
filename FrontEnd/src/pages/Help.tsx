@@ -21,8 +21,8 @@ export const Help: React.FC = () => {
                     <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                         <MessageCircle size={24} />
                     </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white mb-1">Chat Support</h3>
-                    <p className="text-sm text-slate-500">Chat trực tiếp với kỹ thuật</p>
+                    <h3 className="font-bold text-slate-900 dark:text-white mb-1">ABCABC</h3>
+                    <p className="text-sm text-slate-500">ABCABC</p>
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center hover:border-blue-500 transition-colors cursor-pointer group">
                     <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">

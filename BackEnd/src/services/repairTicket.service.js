@@ -164,10 +164,19 @@ async function sendQuotation(ticketId, data, technicianId) {
   if (customer?.email) {
     const requiredParts = ticket.inventoryRequest?.requiredParts || [];
     const partsCount = requiredParts.reduce((total, item) => total + (item.quantity || 0), 0);
-    const partsCost = requiredParts.reduce(
-      (total, item) => total + (item.part?.price || 0) * (item.quantity || 0),
-      0,
-    );
+    const partDetails = requiredParts.map((item) => {
+      const quantity = Number(item.quantity || 0);
+      const unitPrice = Number(item.part?.price || item.unitPrice || 0);
+      return {
+        name: item.part?.partName || 'Linh kiện',
+        brand: item.part?.brand || '',
+        quantity,
+        unitPrice,
+        lineTotal: unitPrice * quantity,
+      };
+    });
+
+    const partsCost = partDetails.reduce((total, item) => total + item.lineTotal, 0);
 
     const html = approvalTemplate({
       customerName: customer.fullName,
@@ -179,6 +188,7 @@ async function sendQuotation(ticketId, data, technicianId) {
       estimatedCompletionDate: data.estimatedCompletionDate,
       partsCost,
       partsCount,
+      partDetails,
       approveUrl,
       rejectUrl,
     });
@@ -269,8 +279,8 @@ async function sendInventoryRejection(ticketId, data, technicianId) {
     });
   }
 
-  ticket.status = 'CUSTOMER_REJECTED';
-  appendHistory(ticket, 'CUSTOMER_REJECTED', technicianId, 'Thông báo kho từ chối linh kiện');
+  ticket.status = 'DONE_INVENTORY_REJECTED';
+  appendHistory(ticket, 'DONE_INVENTORY_REJECTED', technicianId, 'Thông báo kho từ chối linh kiện');
   await ticket.save();
 
   return ticket;
@@ -381,6 +391,9 @@ async function getAllTickets(query = {}, user = null) {
     filter.technician = user.userId;
   }
 
+  if (!user) {
+    delete filter.technician;
+  }
 
   if (status === 'WAITING_INVENTORY') {
     filter['inventoryRequest.status'] = 'PENDING';
@@ -394,25 +407,89 @@ async function getAllTickets(query = {}, user = null) {
     filter['inventoryRequest.status'] = 'REJECTED';
   }
 
-  const tickets = await RepairTicket.find(filter)
+  const baseQuery = RepairTicket.find(filter)
     .sort(sort)
     .limit(Number(limit))
     .populate({
       path: 'device',
       select: 'brand model deviceType',
       populate: { path: 'customer', select: 'fullName phone email' },
-    })
-    .populate('technician', 'fullName role')
-    .populate('createdBy', 'fullName role')
-    .populate('managerAssignedBy', 'fullName role')
-    .populate('inventoryRequest.requiredParts.part', 'partName brand price')
-    .lean();
+    });
+
+  const tickets = await (user
+    ? baseQuery
+        .populate('technician', 'fullName role')
+        .populate('createdBy', 'fullName role')
+        .populate('managerAssignedBy', 'fullName role')
+        .populate('inventoryRequest.requestedBy', 'fullName role')
+        .populate('inventoryRequest.requiredParts.part', 'partName brand price')
+        .populate('statusHistory.changedBy', 'fullName role')
+    : baseQuery
+  ).lean();
 
   const total = await RepairTicket.countDocuments(filter);
 
+  const sanitizedTickets = user
+    ? tickets
+    : tickets.map((ticket) => ({
+        _id: ticket._id,
+        ticketCode: ticket.ticketCode,
+        initialIssue: ticket.initialIssue,
+        status: ticket.status,
+        createdAt: ticket.createdAt,
+        inventoryRequest: ticket.inventoryRequest ? { status: ticket.inventoryRequest.status } : undefined,
+        device: ticket.device
+          ? {
+              brand: ticket.device.brand,
+              model: ticket.device.model,
+              deviceType: ticket.device.deviceType,
+              customer: ticket.device.customer
+                ? {
+                    fullName: ticket.device.customer.fullName,
+                    phone: ticket.device.customer.phone,
+                    email: ticket.device.customer.email,
+                  }
+                : undefined,
+            }
+          : undefined,
+      }));
+
+  const withFallbackTechnician = user
+    ? sanitizedTickets.map((ticket) => {
+        if (ticket?.inventoryRequest?.requestedBy?.fullName || ticket?.technician?.fullName) {
+          return ticket;
+        }
+
+        const latestTechHistory = [...(ticket.statusHistory || [])]
+          .reverse()
+          .find((h) => h?.changedBy?.role === ROLES.TECHNICIAN && h?.changedBy?.fullName);
+
+        if (!latestTechHistory?.changedBy) {
+          return ticket;
+        }
+
+        return {
+          ...ticket,
+          technician: ticket.technician || {
+            _id: latestTechHistory.changedBy._id,
+            fullName: latestTechHistory.changedBy.fullName,
+            role: latestTechHistory.changedBy.role,
+          },
+          inventoryRequest: {
+            ...(ticket.inventoryRequest || {}),
+            requestedBy: ticket.inventoryRequest?.requestedBy || {
+              _id: latestTechHistory.changedBy._id,
+              fullName: latestTechHistory.changedBy.fullName,
+              role: latestTechHistory.changedBy.role,
+            },
+          },
+        };
+      })
+    : sanitizedTickets;
+
   return {
     success: true,
-    data: tickets,
+    data: withFallbackTechnician,
     total,
     limit: Number(limit),
   };

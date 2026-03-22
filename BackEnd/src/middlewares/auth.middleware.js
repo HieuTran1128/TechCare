@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = function auth(req, res, next) {
+function extractToken(req) {
   let token = req.cookies?.access_token;
-  
+
   if (!token && req.headers.authorization) {
     const authHeader = req.headers.authorization;
     if (authHeader.startsWith('Bearer ')) {
@@ -10,21 +10,25 @@ module.exports = function auth(req, res, next) {
     }
   }
 
+  return token;
+}
+
+function verifyToken(token) {
+  return jwt.verify(token, process.env.JWT_SECRET);
+}
+
+function auth(req, res, next) {
+  const token = extractToken(req);
+
   if (!token) {
-    console.log('[Auth] Không có token trong request');
     return res.status(401).json({ message: 'Unauthorized - No token' });
   }
 
-  console.log('[Auth] Token nhận được (đầu 50 ký tự):', token.slice(0, 50));
-  console.log('[Auth] Token nhận được (cuối 50 ký tự):', token.slice(-50));
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('[Auth] Verify thành công:', JSON.stringify(decoded));
+    const decoded = verifyToken(token);
     req.user = decoded;
     next();
   } catch (err) {
-    console.log('[Auth] Verify lỗi:', err.name, err.message);
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.' });
     }
@@ -33,4 +37,24 @@ module.exports = function auth(req, res, next) {
     }
     return res.status(401).json({ message: 'Invalid token' });
   }
-};
+}
+
+function optionalAuth(req, _res, next) {
+  const token = extractToken(req);
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    req.user = verifyToken(token);
+  } catch (_err) {
+    req.user = null;
+  }
+
+  next();
+}
+
+module.exports = auth;
+module.exports.optionalAuth = optionalAuth;

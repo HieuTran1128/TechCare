@@ -15,12 +15,13 @@ interface Employee {
   createdAt?: string;
 }
 
-const API_BASE = 'http://localhost:3000/api'; // thay bằng env variable trong production
+const API_BASE = '/api'; // dùng proxy của Vite để tránh 404
 
 export const EmployeeManagement: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,12 @@ export const EmployeeManagement: React.FC = () => {
     phone: '',
     role: 'technician' as Employee['role'],
   });
+
+  const [bulkErrors, setBulkErrors] = useState<string[]>([]);
+
+  const [bulkStaffList, setBulkStaffList] = useState([
+    { fullName: '', email: '', phone: '', role: 'technician' as Employee['role'] }
+  ]);
 
   // Load danh sách nhân viên khi mount
   useEffect(() => {
@@ -75,6 +82,59 @@ export const EmployeeManagement: React.FC = () => {
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Có lỗi xảy ra khi gửi lời mời';
       setError(msg === 'EMAIL_EXISTS' ? 'Email này đã tồn tại trong hệ thống' : msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkInvite = async () => {
+    setLoading(true);
+    setError(null);
+    setBulkErrors([]);
+
+    try {
+      const staffList = bulkStaffList
+        .map((item) => ({
+          fullName: item.fullName.trim(),
+          email: item.email.trim(),
+          phone: item.phone.trim(),
+          role: item.role,
+        }))
+        .filter((item) => item.fullName || item.email || item.phone || item.role);
+
+      if (staffList.length === 0) {
+        setBulkErrors(['Danh sách không được để trống']);
+        setLoading(false);
+        return;
+      }
+
+      const invalidRow = staffList.findIndex((item) => !item.fullName || !item.email || !item.role);
+      if (invalidRow !== -1) {
+        setBulkErrors([`Dòng ${invalidRow + 1} thiếu thông tin bắt buộc`]);
+        setLoading(false);
+        return;
+      }
+
+      const res = await axios.post(
+        `${API_BASE}/users/invite-bulk`,
+        { staffList: staffList.map((item) => ({ ...item, phone: item.phone || undefined })) },
+        { withCredentials: true }
+      );
+
+      const results = res.data.results || [];
+      const skipped = results.filter((item: any) => item.status !== 'CREATED');
+      if (skipped.length > 0) {
+        setBulkErrors(
+          skipped.map((item: any) => `Email ${item.email}: ${item.reason === 'EMAIL_EXISTS' ? 'đã tồn tại' : 'chức vụ không hợp lệ'}`)
+        );
+      }
+
+      await fetchEmployees();
+      setBulkStaffList([{ fullName: '', email: '', phone: '', role: 'technician' }]);
+      setIsBulkModalOpen(false);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tạo hàng loạt';
+      setBulkErrors([msg]);
     } finally {
       setLoading(false);
     }
@@ -168,23 +228,50 @@ export const EmployeeManagement: React.FC = () => {
     }
   };
 
+  const addBulkRow = () => {
+    setBulkStaffList((prev) => ([
+      ...prev,
+      { fullName: '', email: '', phone: '', role: 'technician' },
+    ]));
+  };
+
+  const removeBulkRow = (index: number) => {
+    setBulkStaffList((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const updateBulkRow = (index: number, field: 'fullName' | 'email' | 'phone' | 'role', value: string) => {
+    setBulkStaffList((prev) =>
+      prev.map((row, idx) => (idx === index ? { ...row, [field]: value } : row))
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header + Button thêm */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Quản lý đội ngũ</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            Gửi lời mời và quản lý nhân sự
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          disabled={loading}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-60"
-        >
-          <UserPlus size={18} /> Mời nhân viên
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            disabled={loading}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-60"
+          >
+            <UserPlus size={18} /> Mời nhân viên
+          </button>
+          <button
+            onClick={() => {
+              setBulkErrors([]);
+              setIsBulkModalOpen(true);
+            }}
+            disabled={loading}
+            className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-60"
+          >
+            <UserPlus size={18} /> Mời nhân viên hàng loạt
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -362,6 +449,144 @@ export const EmployeeManagement: React.FC = () => {
                   {loading ? 'Đang gửi lời mời...' : 'Gửi lời mời & Chờ kích hoạt'}
                 </button>
               </form>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal mời nhân viên hàng loạt */}
+      <AnimatePresence>
+        {isBulkModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-3xl p-8 shadow-2xl border border-white/20 relative"
+            >
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Mời nhân viên hàng loạt</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                  Thêm nhiều dòng nhân viên. Mỗi dòng sẽ gửi mật khẩu qua email.
+                </p>
+              </div>
+
+              {bulkErrors.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  {bulkErrors.map((item, index) => (
+                    <div key={index} className="p-2 bg-red-50 text-red-700 rounded-xl text-xs">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {bulkStaffList.map((row, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Họ tên</label>
+                      <div className="relative mt-1">
+                        <input
+                          type="text"
+                          value={row.fullName}
+                          onChange={(e) => updateBulkRow(index, 'fullName', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 pr-8 text-xs dark:text-white"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 font-bold">+</span>
+                      </div>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Email</label>
+                      <div className="relative mt-1">
+                        <input
+                          type="email"
+                          value={row.email}
+                          onChange={(e) => updateBulkRow(index, 'email', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 pr-8 text-xs dark:text-white"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 font-bold">+</span>
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Số điện thoại</label>
+                      <div className="relative mt-1">
+                        <input
+                          type="tel"
+                          value={row.phone}
+                          onChange={(e) => updateBulkRow(index, 'phone', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 pr-8 text-xs dark:text-white"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 font-bold">+</span>
+                      </div>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Chức vụ</label>
+                      <div className="mt-1 grid grid-cols-3 gap-1">
+                        {(['frontdesk', 'technician', 'storekeeper'] as const).map((role) => (
+                          <button
+                            key={role}
+                            type="button"
+                            onClick={() => updateBulkRow(index, 'role', role)}
+                            className={`py-2 rounded-lg text-[10px] font-bold border transition-all capitalize
+                              ${row.role === role
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                          >
+                            {role === 'frontdesk' ? 'Lễ tân' : role === 'technician' ? 'Kỹ thuật' : 'Kho'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="md:col-span-1 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={addBulkRow}
+                        className="h-10 w-10 rounded-xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+                        title="Thêm dòng"
+                      >
+                        +
+                      </button>
+                      {bulkStaffList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeBulkRow(index)}
+                          className="h-10 w-10 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
+                          title="Xóa dòng"
+                        >
+                          -
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={addBulkRow}
+                  className="sm:w-1/3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold py-3 rounded-xl"
+                >
+                  + Thêm dòng
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkInvite}
+                  disabled={loading}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-60"
+                >
+                  {loading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản & Gửi mật khẩu'}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

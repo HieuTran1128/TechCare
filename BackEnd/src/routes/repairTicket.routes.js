@@ -1,13 +1,14 @@
 const router = require('express').Router();
 const auth = require('../middlewares/auth.middleware');
+const { optionalAuth } = require('../middlewares/auth.middleware');
 const role = require('../middlewares/role.middleware');
 const ROLES = require('../constants/roles.constant');
 const controller = require('../controllers/repairTicket.controller');
 
 router.post('/', auth, role(ROLES.FRONTDESK, ROLES.MANAGER), controller.create);
-router.get('/', auth, controller.getAll);
+router.get('/', optionalAuth, controller.getAll);
 
-router.patch('/:id/assign', auth, role(ROLES.MANAGER), controller.assign);
+router.patch('/:id/assign', auth, role(ROLES.FRONTDESK), controller.assign);
 
 router.patch(
   '/:id/inventory-request',

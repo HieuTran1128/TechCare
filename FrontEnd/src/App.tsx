@@ -13,6 +13,9 @@ import { Help } from './pages/Help';
 import { EmployeeManagement } from './pages/EmployeeManagement';
 import { ReceptionistBoard } from './pages/ReceptionistBoard';
 import Activate from './pages/ActivateAccount';
+import { ChatPage } from './pages/ChatPage';
+import { KPIDashboard } from './pages/KPIDashboard';
+import { Toaster } from 'react-hot-toast';
 
 const AuthInitializer = () => {
   const { fetchUserProfile } = useAuth();
@@ -55,10 +58,12 @@ const AppRoutes = () => {
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['manager']}><Layout><AdminDashboard /></Layout></ProtectedRoute>} />
       <Route path="/frontdesk" element={<ProtectedRoute allowedRoles={['manager', 'frontdesk']}><Layout><ReceptionistBoard /></Layout></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute allowedRoles={['manager']}><Layout><EmployeeManagement /></Layout></ProtectedRoute>} />
-      <Route path="/technician" element={<ProtectedRoute allowedRoles={['manager', 'technician']}><Layout><TechnicianBoard /></Layout></ProtectedRoute>} />
+      <Route path="/kpi" element={<ProtectedRoute allowedRoles={['manager']}><Layout><KPIDashboard /></Layout></ProtectedRoute>} />
+      <Route path="/technician" element={<ProtectedRoute allowedRoles={['frontdesk', 'technician']}><Layout><TechnicianBoard /></Layout></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute allowedRoles={['manager', 'storekeeper']}><Layout><Inventory /></Layout></ProtectedRoute>} />
       <Route path="/customer-lookup" element={<ProtectedRoute allowedRoles={['manager', 'frontdesk']}><Layout><CustomerTracking /></Layout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Settings /></Layout></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><ChatPage /></Layout></ProtectedRoute>} />
       <Route path="/help" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Help /></Layout></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -71,6 +76,7 @@ function App() {
     <AuthProvider>
       <AuthInitializer />
       <Router>
+        <Toaster position="top-right" />
         <AppRoutes />
       </Router>
     </AuthProvider>

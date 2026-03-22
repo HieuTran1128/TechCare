@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Bell, Save, Upload, Loader2 } from 'lucide-react';
+import { User, Bell, Save, Upload, Loader2, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -12,9 +12,16 @@ const Settings: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [emailNotify, setEmailNotify] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -28,25 +35,25 @@ const Settings: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Vui lòng chọn file ảnh (JPG, PNG, GIF)');
+      setAvatarError('Vui lòng chọn file ảnh (JPG, PNG, GIF)');
       return;
     }
 
     if (file.size > 800 * 1024) {
-      toast.error('Kích thước ảnh tối đa 800KB');
+      setAvatarError('Kích thước ảnh tối đa 800KB');
       return;
     }
 
     const previewUrl = URL.createObjectURL(file);
     setAvatarPreview(previewUrl);
+    setAvatarError(null);
     setIsUploading(true);
 
     try {
       await updateAvatar(file);
-      toast.success('Cập nhật ảnh đại diện thành công!');
       await fetchUserProfile();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Có lỗi khi upload ảnh');
+      setAvatarError(err.response?.data?.message || 'Có lỗi khi upload ảnh');
       setAvatarPreview(null);
     } finally {
       setIsUploading(false);
@@ -58,10 +65,11 @@ const Settings: React.FC = () => {
 
   const handleSave = async () => {
     if (!fullName.trim()) {
-      toast.error('Họ và tên không được để trống');
+      setProfileError('Họ và tên không được để trống');
       return;
     }
 
+    setProfileError(null);
     setIsSavingProfile(true);
     try {
       await axios.patch(
@@ -79,6 +87,44 @@ const Settings: React.FC = () => {
       toast.error(err.response?.data?.message || 'Không thể lưu hồ sơ');
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword) {
+      setPasswordError('Vui lòng nhập mật khẩu hiện tại');
+      return;
+    }
+    if (!newPassword) {
+      setPasswordError('Vui lòng nhập mật khẩu mới');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('Xác nhận mật khẩu mới không khớp');
+      return;
+    }
+
+    setPasswordError(null);
+    setIsChangingPassword(true);
+    try {
+      await axios.patch(
+        `${API_BASE}/users/password`,
+        { currentPassword, newPassword },
+        { withCredentials: true },
+      );
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      toast.success('Đổi mật khẩu thành công');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Không thể đổi mật khẩu');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -137,6 +183,7 @@ const Settings: React.FC = () => {
               </button>
 
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Định dạng: JPG, PNG, GIF • Tối đa 800KB</p>
+              {avatarError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{avatarError}</p>}
             </div>
           </div>
 
@@ -150,6 +197,7 @@ const Settings: React.FC = () => {
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
                 placeholder="Nhập họ và tên"
               />
+              {profileError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{profileError}</p>}
             </div>
 
             <div>
@@ -172,6 +220,65 @@ const Settings: React.FC = () => {
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed"
               />
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <Lock size={20} className="text-emerald-500" />
+            Bảo mật
+          </h2>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mật khẩu hiện tại</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                placeholder="Nhập mật khẩu hiện tại"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mật khẩu mới</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                placeholder="Tối thiểu 6 ký tự"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Xác nhận mật khẩu mới</label>
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                placeholder="Nhập lại mật khẩu mới"
+              />
+            </div>
+          </div>
+
+          {passwordError && <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={isChangingPassword}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50"
+            >
+              {isChangingPassword ? <Loader2 size={18} className="animate-spin" /> : <Lock size={18} />}
+              {isChangingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}
+            </button>
           </div>
         </div>
       </div>
