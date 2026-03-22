@@ -11,6 +11,36 @@ function inviteTemplate(fullName, link) {
   `;
 }
 
+function staffPasswordTemplate(fullName, email, password) {
+  return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tài khoản nhân viên - TechCare</title>
+</head>
+<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
+  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#2563eb,#4f46e5);color:white;padding:20px;">
+      <h1 style="margin:0;font-size:22px;">TechCare - Tài khoản nhân viên</h1>
+    </div>
+    <div style="padding:20px;line-height:1.6;">
+      <p>Xin chào <strong>${fullName}</strong>,</p>
+      <p>Tài khoản của bạn đã được tạo trong hệ thống TechCare.</p>
+      <p>Dưới đây là thông tin đăng nhập:</p>
+      <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:12px;border-radius:8px;margin:12px 0;">
+        <p style="margin:0 0 6px;"><strong>Email:</strong> ${email}</p>
+        <p style="margin:0;"><strong>Mật khẩu tạm:</strong> ${password}</p>
+      </div>
+      <p>Vui lòng đăng nhập và đổi mật khẩu ngay sau lần đăng nhập đầu tiên.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
 const approvalTemplate = ({
   customerName,
   ticketCode,
@@ -22,6 +52,7 @@ const approvalTemplate = ({
   rejectUrl,
   partsCost,
   partsCount,
+  partDetails = [],
   laborCost,
 }) => {
   return `
@@ -54,7 +85,22 @@ const approvalTemplate = ({
       </div>
 
       <div style="background:#f8fafc;border-left:4px solid #0ea5e9;padding:12px;border-radius:8px;margin:12px 0;">
-        <strong>Giá linh kiện cần thay:</strong> ${partsCount ? Number(partsCost || 0).toLocaleString('vi-VN') + ' ₫' : 'Không có'}
+        <strong>Giá linh kiện cần thay:</strong><br/>
+        ${partsCount
+          ? `<div style="margin-top:8px;">
+              ${partDetails
+                .map(
+                  (item, index) => `
+                    <div style="padding:6px 0;border-bottom:${index === partDetails.length - 1 ? 'none' : '1px dashed #cbd5e1'};font-size:14px;">
+                      <div><strong>${item.name}</strong>${item.brand ? ` (${item.brand})` : ''}</div>
+                      <div style="color:#475569;">SL: ${item.quantity} • Đơn giá: ${Number(item.unitPrice || 0).toLocaleString('vi-VN')} ₫ • Thành tiền: ${Number(item.lineTotal || 0).toLocaleString('vi-VN')} ₫</div>
+                    </div>
+                  `,
+                )
+                .join('')}
+              <div style="margin-top:8px;font-weight:700;">Tổng linh kiện: ${Number(partsCost || 0).toLocaleString('vi-VN')} ₫</div>
+            </div>`
+          : 'Không có'}
       </div>
 
       <div style="background:#f8fafc;border-left:4px solid #8b5cf6;padding:12px;border-radius:8px;margin:12px 0;">

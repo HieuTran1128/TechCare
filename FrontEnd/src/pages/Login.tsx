@@ -21,8 +21,8 @@ const API_BASE_URL =
 const DEMO_ACCOUNTS = [
   {
     role: "Quản lý",
-    email: "hieutltde180438@fpt.edu.vn",
-    password: "trunghieu",
+    email: "vunthde180740@fpt.edu.vn",
+    password: "hoangvu",
     icon: Shield,
     color: "text-blue-600",
     bg: "bg-blue-100 dark:bg-blue-900/30",

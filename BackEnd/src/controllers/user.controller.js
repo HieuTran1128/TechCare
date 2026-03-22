@@ -13,6 +13,21 @@ exports.createUser = async (req, res, next) => {
   }
 };
 
+exports.createUserBulk = async (req, res, next) => {
+  try {
+    const results = await userService.createStaffBulk(req.body.staffList);
+    res.status(201).json({
+      message: 'Bulk accounts processed',
+      results,
+    });
+  } catch (err) {
+    if (err.message === 'STAFF_LIST_REQUIRED') {
+      return res.status(400).json({ message: 'Danh sách nhân viên không được để trống' });
+    }
+    next(err);
+  }
+};
+
 exports.updateAvatar = async (req, res) => {
   const avatarUrl = await userService.uploadAvatar(
     req.user.userId,
@@ -84,6 +99,36 @@ exports.updateProfile = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    await userService.changePassword(req.user.userId, currentPassword, newPassword);
+
+    res.json({ message: 'Password updated' });
+  } catch (err) {
+    if (err.message === 'CURRENT_PASSWORD_REQUIRED') {
+      return res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại' });
+    }
+    if (err.message === 'NEW_PASSWORD_REQUIRED') {
+      return res.status(400).json({ message: 'Vui lòng nhập mật khẩu mới' });
+    }
+    if (err.message === 'PASSWORD_TOO_SHORT') {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+    if (err.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (err.message === 'PASSWORD_NOT_SET') {
+      return res.status(400).json({ message: 'Tài khoản chưa có mật khẩu. Vui lòng dùng chức năng quên mật khẩu.' });
+    }
+    if (err.message === 'INVALID_CURRENT_PASSWORD') {
+      return res.status(401).json({ message: 'Mật khẩu hiện tại không đúng' });
+    }
+    return res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 

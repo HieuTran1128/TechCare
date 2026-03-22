@@ -37,6 +37,7 @@ const getStatusBadge = (status: string, inventoryStatus?: string) => {
     CUSTOMER_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     IN_PROGRESS: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     COMPLETED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   };
 
   const isInventoryRejected = status === 'CUSTOMER_REJECTED' && inventoryStatus === 'REJECTED';
@@ -52,6 +53,7 @@ const getStatusBadge = (status: string, inventoryStatus?: string) => {
     CUSTOMER_REJECTED: isInventoryRejected ? 'Kho từ chối' : 'Khách từ chối',
     IN_PROGRESS: 'Đang sửa',
     COMPLETED: 'Hoàn thành',
+    DONE_INVENTORY_REJECTED: 'Kho từ chối',
   };
 
   return (
