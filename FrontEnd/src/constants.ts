@@ -1,4 +1,4 @@
-import { LayoutDashboard, Wrench, Package, Settings, HelpCircle, Users, ClipboardList, UserPlus, MessageCircle, ChartColumn } from 'lucide-react';
+import { LayoutDashboard, Wrench, Package, Settings, HelpCircle, Users, ClipboardList, UserPlus, MessageCircle, ChartColumn, CalendarDays } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type Role = 'manager' | 'technician' | 'storekeeper' | 'frontdesk';
@@ -12,6 +12,8 @@ export interface MenuItem {
 
 export const MENU_ITEMS: MenuItem[] = [
   { label: 'Tổng quan', path: '/admin', icon: LayoutDashboard, roles: ['manager'] },
+  { label: 'Lịch làm việc', path: '/schedules', icon: CalendarDays, roles: ['manager'] },
+  { label: 'Lịch làm việc', path: '/my-schedule', icon: CalendarDays, roles: ['technician', 'storekeeper', 'frontdesk'] },
   { label: 'Tiếp nhận', path: '/frontdesk', icon: ClipboardList, roles: ['frontdesk'] },
   { label: 'Điều phối sửa chữa', path: '/technician', icon: Wrench, roles: ['frontdesk', 'technician'] },
   { label: 'Kho linh kiện', path: '/inventory', icon: Package, roles: ['manager', 'storekeeper'] },
