@@ -9,6 +9,8 @@ const deviceRoutes = require('./routes/device.routes');
 const partRoutes = require('./routes/part.routes');
 const supplierRoutes = require('./routes/supplier.routes');
 const kpiRoutes = require('./routes/kpi.routes');
+const connectDB = require('./config/mongo')
+require('dotenv').config();
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -29,4 +31,10 @@ app.use('/api/parts', partRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/kpi', kpiRoutes);
 
+const PORT = process.env.PORT || 5000;
+connectDB();
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 module.exports = app;
