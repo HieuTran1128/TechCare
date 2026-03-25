@@ -14,11 +14,21 @@ export const PersonalSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Create a 7 day list from today
-  const today = new Date();
+  // Lấy thời điểm hiện tại để tính toán logic ẩn/hiện
+  const now = new Date();
+  const currentHour = now.getHours();
+  const todayStr = now.toISOString().split('T')[0];
+
+  /**
+   * LOGIC HIỂN THỊ:
+   * 1. Nếu đã qua 17h hôm nay -> Ẩn hoàn toàn ngày hôm nay, bắt đầu danh sách từ ngày mai.
+   * 2. Nếu chưa qua 17h -> Hiển thị từ ngày hôm nay.
+   */
+  const startOffset = currentHour >= 17 ? 1 : 0;
+  
   const next7Days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+    const d = new Date(now);
+    d.setDate(now.getDate() + i + startOffset);
     return d.toISOString().split('T')[0];
   });
 
@@ -76,7 +86,7 @@ export const PersonalSchedule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto p-4">
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Lịch Làm Việc</h1>
         <p className="text-slate-500 text-sm mt-1">Đăng ký ca làm việc của bạn trong 7 ngày tới</p>
@@ -91,25 +101,33 @@ export const PersonalSchedule: React.FC = () => {
               const { day, formattedDate } = getDayName(date);
               const morn = hasShift(date, 'morning');
               const aft = hasShift(date, 'afternoon');
+              const isToday = date === todayStr;
               
               return (
                 <div key={date} className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                   <div className="flex justify-between items-center mb-4 border-b pb-2">
-                    <span className="font-bold text-slate-800 dark:text-slate-100 capitalize">{day}</span>
-                    <span className="text-sm text-slate-500 flex items-center gap-1 font-medium bg-slate-100 px-2 py-0.5 rounded-full"><CalendarIcon size={12}/> {formattedDate}</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-100 capitalize">
+                      {isToday ? "Hôm nay" : day}
+                    </span>
+                    <span className="text-sm text-slate-500 flex items-center gap-1 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                      <CalendarIcon size={12}/> {formattedDate}
+                    </span>
                   </div>
                   
                   <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={() => toggleShift(date, 'morning')}
-                      className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all group ${morn ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-white'}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Clock size={16} className={morn ? 'text-blue-600' : 'text-slate-400'} />
-                        <span className="font-semibold text-sm">Ca Sáng</span>
-                      </div>
-                      <span className="text-xs">{morn ? <CheckCircle size={16} className="text-blue-600" /> : '8:00 - 12:00'}</span>
-                    </button>
+                    {/* LOGIC: Chỉ hiện ca sáng nếu không phải hôm nay HOẶC là hôm nay nhưng chưa quá 12h trưa */}
+                    {!(isToday && currentHour >= 12) && (
+                      <button 
+                        onClick={() => toggleShift(date, 'morning')}
+                        className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all group ${morn ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-white'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} className={morn ? 'text-blue-600' : 'text-slate-400'} />
+                          <span className="font-semibold text-sm">Ca Sáng</span>
+                        </div>
+                        <span className="text-xs">{morn ? <CheckCircle size={16} className="text-blue-600" /> : '8:00 - 12:00'}</span>
+                      </button>
+                    )}
 
                     <button 
                       onClick={() => toggleShift(date, 'afternoon')}

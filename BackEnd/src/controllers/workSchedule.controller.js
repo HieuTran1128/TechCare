@@ -1,4 +1,5 @@
 const WorkSchedule = require('../models/workSchedule.model');
+const UserSalary = require('../models/userSalary')
 
 // Staff registers a shift
 exports.registerSchedule = async (req, res) => {
@@ -14,7 +15,13 @@ exports.registerSchedule = async (req, res) => {
       date,
       shift,
     });
-    
+
+    await UserSalary.updateOne(
+      { userId: req.user.userId },
+      { $setOnInsert: { hourlyRate: 0, currency: 'VND' } },
+      { upsert: true }
+    );
+
     res.status(201).json({ message: 'Đăng ký ca làm thành công', data: schedule });
   } catch (err) {
     if (err.code === 11000) {
@@ -76,7 +83,7 @@ exports.getAllSchedules = async (req, res) => {
     const schedules = await WorkSchedule.find(query)
       .populate('userId', 'fullName role avatar')
       .sort({ date: 1, shift: 1 });
-      
+
     res.json({ data: schedules });
   } catch (err) {
     res.status(500).json({ message: err.message });

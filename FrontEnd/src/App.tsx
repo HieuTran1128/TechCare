@@ -7,6 +7,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TechnicianBoard } from './pages/TechnicianBoard';
 import { Inventory } from './pages/Inventory';
+import { PayrollManagement } from './pages/PayRollManagement';
 import { CustomerTracking } from './pages/CustomerTracking';
 import Settings from './pages/Settings';
 import { Help } from './pages/Help';
@@ -71,7 +72,7 @@ const AppRoutes = () => {
       <Route path="/settings" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Settings /></Layout></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><ChatPage /></Layout></ProtectedRoute>} />
       <Route path="/help" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Help /></Layout></ProtectedRoute>} />
-
+      <Route path="/payroll" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><PayrollManagement /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
