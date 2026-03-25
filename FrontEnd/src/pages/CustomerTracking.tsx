@@ -38,6 +38,11 @@ const getStatusBadge = (status: string, inventoryStatus?: string) => {
     IN_PROGRESS: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     COMPLETED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
     DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    PAYMENTED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    CANCELLED: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300',
+    PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    
   };
 
   const isInventoryRejected = status === 'CUSTOMER_REJECTED' && inventoryStatus === 'REJECTED';
@@ -54,6 +59,10 @@ const getStatusBadge = (status: string, inventoryStatus?: string) => {
     IN_PROGRESS: 'Đang sửa',
     COMPLETED: 'Hoàn thành',
     DONE_INVENTORY_REJECTED: 'Kho từ chối',
+    PAYMENTED: 'Đã thanh toán',
+    REJECTED: 'Từ chối',
+    CANCELLED: 'Đã hủy',
+    PENDING: 'Đang chờ',
   };
 
   return (
@@ -164,7 +173,7 @@ export const CustomerTracking: React.FC = () => {
                     <p className="flex items-center gap-2"><User size={14} /> {customer?.fullName || 'N/A'}</p>
                     <p className="flex items-center gap-2"><Phone size={14} /> {customer?.phone || 'N/A'}</p>
                     <p className="flex items-center gap-2"><Mail size={14} /> {customer?.email || 'N/A'}</p>
-                    <p className="flex items-center gap-2"><Smartphone size={14} /> {device?.brand || ''} {device?.model || ''} ({device?.deviceType || 'N/A'})</p>
+                    <p className="flex items-center gap-2"><Smartphone size={14} /> {device?.deviceType || 'N/A'} • {device?.brand || 'N/A'} • {device?.model || 'N/A'}</p>
                   </div>
 
                   <p className="text-sm text-slate-600 dark:text-slate-300 pt-1">Lỗi: {ticket.initialIssue}</p>

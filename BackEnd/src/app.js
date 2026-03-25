@@ -9,8 +9,11 @@ const deviceRoutes = require('./routes/device.routes');
 const partRoutes = require('./routes/part.routes');
 const supplierRoutes = require('./routes/supplier.routes');
 const kpiRoutes = require('./routes/kpi.routes');
+
 const connectDB = require('./config/mongo')
 require('dotenv').config();
+
+const workScheduleRoutes = require('./routes/workSchedule.routes');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -30,6 +33,7 @@ app.use('/api/devices', deviceRoutes);
 app.use('/api/parts', partRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/kpi', kpiRoutes);
+app.use('/api/schedules', workScheduleRoutes);
 
 const PORT = process.env.PORT || 5000;
 connectDB();

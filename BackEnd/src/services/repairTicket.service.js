@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { PayOS } = require('@payos/node');
 const RepairTicket = require('../models/repairTicket.model');
 const User = require('../models/user.model');
 const Part = require('../models/part.model');
@@ -12,6 +13,24 @@ function generateTicketCode() {
   const year = new Date().getFullYear();
   const random = Math.floor(100000 + Math.random() * 900000);
   return `TC-${year}-${random}`;
+}
+
+function createPayosClient() {
+  const clientId = process.env.PAYOS_CLIENT_ID;
+  const apiKey = process.env.PAYOS_API_KEY;
+  const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
+
+  if (!clientId || !apiKey || !checksumKey) {
+    throw new Error('PAYOS_CONFIG_MISSING');
+  }
+
+  return new PayOS(clientId, apiKey, checksumKey);
+}
+
+function normalizeOrderCodeFromTicket(ticket) {
+  const ts = Date.now().toString().slice(-10);
+  const ticketTail = String(ticket.ticketCode || ticket._id).replace(/\D/g, '').slice(-6) || '000001';
+  return Number(`${ts.slice(0, 4)}${ticketTail.padStart(6, '0')}`.slice(0, 10));
 }
 
 function appendHistory(ticket, status, changedBy, note) {
@@ -181,6 +200,9 @@ async function sendQuotation(ticketId, data, technicianId) {
     const html = approvalTemplate({
       customerName: customer.fullName,
       ticketCode: ticket.ticketCode,
+      deviceType: ticket.device?.deviceType || '-',
+      deviceBrand: ticket.device?.brand || '-',
+      deviceModel: ticket.device?.model || '-',
       diagnosisResult: data.diagnosisResult,
       estimatedCost: data.estimatedCost,
       laborCost: data.laborCost,
@@ -379,6 +401,185 @@ async function completeTicket(ticketId, data, technicianId) {
   return ticket;
 }
 
+async function findTicketByCode(ticketCode) {
+  if (!ticketCode) throw new Error('TICKET_CODE_REQUIRED');
+
+  const normalizedCode = String(ticketCode).trim();
+  const escaped = normalizedCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const ticket = await RepairTicket.findOne({
+    $or: [
+      { ticketCode: normalizedCode },
+      { ticketCode: { $regex: escaped, $options: 'i' } },
+    ],
+  })
+    .sort({ createdAt: -1 })
+    .populate({
+      path: 'device',
+      select: 'brand model deviceType',
+      populate: { path: 'customer', select: 'fullName phone email' },
+    })
+    .populate('technician', 'fullName role')
+    .populate('payment.paidBy', 'fullName role')
+    .lean();
+
+  if (!ticket) throw new Error('NOT_FOUND');
+
+  return ticket;
+}
+
+async function searchTicketsByCodeKeyword(keyword, limit = 8) {
+  const q = String(keyword || '').trim();
+  if (!q) return [];
+
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  return RepairTicket.find({ ticketCode: { $regex: escaped, $options: 'i' } })
+    .sort({ createdAt: -1 })
+    .limit(Math.min(Number(limit) || 8, 15))
+    .select('ticketCode status finalCost createdAt initialIssue device')
+    .populate({
+      path: 'device',
+      select: 'deviceType brand model',
+      populate: { path: 'customer', select: 'fullName' },
+    })
+    .lean();
+}
+
+async function markTicketAsPaid(ticketId, { paymentMethod, orderCode }, frontdeskId) {
+  const ticket = await RepairTicket.findById(ticketId);
+  if (!ticket) throw new Error('NOT_FOUND');
+
+  if (ticket.status !== 'COMPLETED') {
+    throw new Error('INVALID_STATUS_TO_PAY');
+  }
+
+  const normalizedMethod = String(paymentMethod || '').toUpperCase();
+  if (!['CASH', 'PAYOS'].includes(normalizedMethod)) {
+    throw new Error('INVALID_PAYMENT_METHOD');
+  }
+
+  ticket.payment = {
+    ...(ticket.payment || {}),
+    method: normalizedMethod,
+    status: 'PAID',
+    paidAt: new Date(),
+    paidBy: frontdeskId,
+    amount: ticket.finalCost || ticket.quote?.estimatedCost || 0,
+    payosOrderCode: normalizedMethod === 'PAYOS' ? String(orderCode || `PAYOS-${Date.now()}`) : undefined,
+  };
+
+  ticket.status = 'PAYMENTED';
+  appendHistory(
+    ticket,
+    'PAYMENTED',
+    frontdeskId,
+    normalizedMethod === 'CASH' ? 'Khách thanh toán tiền mặt tại quầy' : 'Khách thanh toán online qua payOS',
+  );
+
+  await ticket.save();
+  return ticket;
+}
+
+async function createPayosPayment(ticketId, frontdeskId) {
+  const ticket = await RepairTicket.findById(ticketId).populate({
+    path: 'device',
+    populate: { path: 'customer', select: 'fullName email' },
+  });
+
+  if (!ticket) throw new Error('NOT_FOUND');
+  if (ticket.status !== 'COMPLETED') throw new Error('INVALID_STATUS_TO_PAY');
+
+  const payos = createPayosClient();
+  const amount = Math.max(0, Math.round(Number(ticket.finalCost || ticket.quote?.estimatedCost || 0)));
+  if (!amount) throw new Error('INVALID_PAYMENT_AMOUNT');
+
+  const frontendUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+  const orderCode = normalizeOrderCodeFromTicket(ticket);
+
+  const description = `Thanh toan ${ticket.ticketCode}`.slice(0, 25);
+
+  const paymentLinkData = {
+    orderCode,
+    amount,
+    description,
+    returnUrl: `${frontendUrl}/#/payment-result?status=success&ticket=${ticket.ticketCode}`,
+    cancelUrl: `${frontendUrl}/#/payment-result?status=cancel&ticket=${ticket.ticketCode}`,
+    buyerName: ticket.device?.customer?.fullName || 'Khach hang TechCare',
+    buyerEmail: ticket.device?.customer?.email || undefined,
+    items: [
+      {
+        name: `Sua chua ${ticket.ticketCode}`.slice(0, 25),
+        quantity: 1,
+        price: amount,
+      },
+    ],
+    expiredAt: Math.floor(Date.now() / 1000) + 60 * 30,
+  };
+
+  const paymentLink = await payos.paymentRequests.create(paymentLinkData);
+
+  ticket.payment = {
+    ...(ticket.payment || {}),
+    method: 'PAYOS',
+    status: 'PENDING',
+    amount,
+    paidBy: frontdeskId,
+    payosOrderCode: String(orderCode),
+    payosCheckoutUrl: paymentLink.checkoutUrl,
+  };
+
+  await ticket.save();
+
+  return {
+    ticketId: ticket._id,
+    orderCode,
+    checkoutUrl: paymentLink.checkoutUrl,
+    amount,
+  };
+}
+
+async function handlePayosWebhook(webhookPayload) {
+  const payos = createPayosClient();
+  const verified = await payos.webhooks.verify(webhookPayload);
+
+  const payloadData = verified?.data || verified;
+  const orderCode = String(payloadData?.orderCode || '');
+  const code = String(payloadData?.code || '');
+
+  if (!orderCode) throw new Error('PAYOS_ORDER_CODE_REQUIRED');
+
+  const ticket = await RepairTicket.findOne({ 'payment.payosOrderCode': orderCode });
+  if (!ticket) return { ok: true, ignored: true };
+
+  const success = code === '00';
+  if (!success) {
+    ticket.payment = {
+      ...(ticket.payment || {}),
+      method: 'PAYOS',
+      status: 'PENDING',
+    };
+    await ticket.save();
+    return { ok: true, paid: false };
+  }
+
+  if (ticket.status !== 'PAYMENTED') {
+    ticket.payment = {
+      ...(ticket.payment || {}),
+      method: 'PAYOS',
+      status: 'PAID',
+      paidAt: new Date(),
+      amount: Number(payloadData?.amount || ticket.payment?.amount || ticket.finalCost || 0),
+      payosOrderCode: orderCode,
+    };
+    ticket.status = 'PAYMENTED';
+    appendHistory(ticket, 'PAYMENTED', null, 'payOS webhook xác nhận thanh toán thành công');
+    await ticket.save();
+  }
+
+  return { ok: true, paid: true };
+}
+
 async function getAllTickets(query = {}, user = null) {
   const { limit = 100, sort = '-createdAt', technicianId, status } = query;
 
@@ -498,12 +699,12 @@ async function getAllTickets(query = {}, user = null) {
 async function getManagerSummary() {
   const [all, completed, rejected] = await Promise.all([
     RepairTicket.countDocuments(),
-    RepairTicket.countDocuments({ status: 'COMPLETED' }),
-    RepairTicket.countDocuments({ status: 'REJECTED' }),
+    RepairTicket.countDocuments({ status: 'PAYMENTED' }),
+    RepairTicket.countDocuments({ status: { $in: ['REJECTED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED'] } }),
   ]);
 
   const revenueAgg = await RepairTicket.aggregate([
-    { $match: { status: 'COMPLETED' } },
+    { $match: { status: 'PAYMENTED' } },
     { $group: { _id: null, totalRevenue: { $sum: '$finalCost' } } },
   ]);
 
@@ -526,6 +727,11 @@ module.exports = {
   customerReject,
   startRepair,
   completeTicket,
+  findTicketByCode,
+  searchTicketsByCodeKeyword,
+  createPayosPayment,
+  handlePayosWebhook,
+  markTicketAsPaid,
   getAllTickets,
   getManagerSummary,
 };
