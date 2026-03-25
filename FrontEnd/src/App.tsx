@@ -7,11 +7,14 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TechnicianBoard } from './pages/TechnicianBoard';
 import { Inventory } from './pages/Inventory';
+import { PayrollManagement } from './pages/PayRollManagement';
 import { CustomerTracking } from './pages/CustomerTracking';
 import Settings from './pages/Settings';
 import { Help } from './pages/Help';
 import { EmployeeManagement } from './pages/EmployeeManagement';
 import { ReceptionistBoard } from './pages/ReceptionistBoard';
+import { PersonalSchedule } from './pages/PersonalSchedule';
+import { ManagerSchedule } from './pages/ManagerSchedule';
 import Activate from './pages/ActivateAccount';
 import { ChatPage } from './pages/ChatPage';
 import { KPIDashboard } from './pages/KPIDashboard';
@@ -59,6 +62,8 @@ const AppRoutes = () => {
 
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['manager']}><Layout><AdminDashboard /></Layout></ProtectedRoute>} />
       <Route path="/frontdesk" element={<ProtectedRoute allowedRoles={['manager', 'frontdesk']}><Layout><ReceptionistBoard /></Layout></ProtectedRoute>} />
+      <Route path="/schedules" element={<ProtectedRoute allowedRoles={['manager']}><Layout><ManagerSchedule /></Layout></ProtectedRoute>} />
+      <Route path="/my-schedule" element={<ProtectedRoute allowedRoles={['technician', 'storekeeper', 'frontdesk']}><Layout><PersonalSchedule /></Layout></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute allowedRoles={['manager']}><Layout><EmployeeManagement /></Layout></ProtectedRoute>} />
       <Route path="/kpi" element={<ProtectedRoute allowedRoles={['manager']}><Layout><KPIDashboard /></Layout></ProtectedRoute>} />
       <Route path="/technician" element={<ProtectedRoute allowedRoles={['frontdesk', 'technician']}><Layout><TechnicianBoard /></Layout></ProtectedRoute>} />
@@ -67,7 +72,7 @@ const AppRoutes = () => {
       <Route path="/settings" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Settings /></Layout></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><ChatPage /></Layout></ProtectedRoute>} />
       <Route path="/help" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Help /></Layout></ProtectedRoute>} />
-
+      <Route path="/payroll" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><PayrollManagement /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
