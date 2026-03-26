@@ -7,7 +7,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TechnicianBoard } from './pages/TechnicianBoard';
 import { Inventory } from './pages/Inventory';
-import { PayrollManagement } from './pages/PayrollManagement';
+import { PayrollManagement } from './pages/PayRollManagement';
 import { CustomerTracking } from './pages/CustomerTracking';
 import Settings from './pages/Settings';
 import { Help } from './pages/Help';

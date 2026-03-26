@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Upload } from 'lucide-react';
-import InventoryKPI from '../components/InventoryKPI';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -115,7 +114,7 @@ export const Inventory: React.FC = () => {
     outOfStock: 0,
   });
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'parts' | 'import' | 'usage' | 'alerts' | 'suppliers' | 'requests' | 'kpi'>('parts');
+  const [tab, setTab] = useState<'parts' | 'import' | 'usage' | 'alerts' | 'suppliers' | 'requests'>('parts');
 
   const [form, setForm] = useState({
     partName: '',
@@ -544,11 +543,6 @@ export const Inventory: React.FC = () => {
           <button onClick={() => setTab('alerts')} className={`px-4 py-2 rounded-lg ${tab === 'alerts' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
             Cảnh báo
           </button>
-          {isManager && (
-            <button onClick={() => setTab('kpi')} className={`px-4 py-2 rounded-lg ${tab === 'kpi' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
-              KPI Kho
-            </button>
-          )}
         </div>
       </div>
 
@@ -745,38 +739,9 @@ export const Inventory: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-slate-900">Lịch sử nhập kho</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">
-                {imports.length} bản ghi
-              </span>
-              <button
-                onClick={() => {
-                  const headers = ['Linh kiện', 'Hãng', 'Nhà cung cấp', 'Batch', 'Số lượng', 'Giá nhập (₫)', 'Thành tiền (₫)', 'Thời gian', 'Người tạo'];
-                  const rows = imports.map((item) => [
-                    `"${(item.product?.partName || 'N/A').replaceAll('"', '""')}"`,
-                    `"${(item.product?.brand || 'N/A').replaceAll('"', '""')}"`,
-                    `"${(item.supplier?.name || 'N/A').replaceAll('"', '""')}"`,
-                    item.batchCode || 'N/A',
-                    item.quantity,
-                    item.importPrice,
-                    item.quantity * item.importPrice,
-                    new Date(item.createdAt).toLocaleString('vi-VN'),
-                    `"${(item.createdBy?.fullName || 'N/A').replaceAll('"', '""')}"`,
-                  ]);
-                  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-                  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `lich-su-nhap-kho-${new Date().toISOString().slice(0, 10)}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold"
-              >
-                ↓ Export CSV
-              </button>
-            </div>
+            <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">
+              {imports.length} bản ghi
+            </span>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-100">
@@ -814,40 +779,9 @@ export const Inventory: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-slate-900">Lịch sử xuất kho sửa chữa</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">
-                {usageHistory.length} bản ghi
-              </span>
-              <button
-                onClick={() => {
-                  const headers = ['Linh kiện', 'Hãng', 'Mã phiếu', 'Số lượng', 'Đơn giá (₫)', 'Thành tiền (₫)', 'Thời gian', 'Người thao tác'];
-                  const rows = usageHistory.map((item) => {
-                    const unitPrice = Number(item.unitPrice || 0);
-                    return [
-                      `"${(item.part?.partName || 'N/A').replaceAll('"', '""')}"`,
-                      `"${(item.part?.brand || 'N/A').replaceAll('"', '""')}"`,
-                      item.ticket?.ticketCode || 'N/A',
-                      item.quantity,
-                      unitPrice,
-                      unitPrice * Number(item.quantity || 0),
-                      new Date(item.createdAt).toLocaleString('vi-VN'),
-                      `"${(item.createdBy?.fullName || 'N/A').replaceAll('"', '""')}"`,
-                    ];
-                  });
-                  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-                  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `lich-su-xuat-kho-${new Date().toISOString().slice(0, 10)}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold"
-              >
-                ↓ Export CSV
-              </button>
-            </div>
+            <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">
+              {usageHistory.length} bản ghi
+            </span>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-100">
@@ -1297,8 +1231,6 @@ export const Inventory: React.FC = () => {
       )}
 
       {loading && <p>Đang tải dữ liệu...</p>}
-
-      {tab === 'kpi' && isManager && <InventoryKPI />}
     </div>
   );
 };
