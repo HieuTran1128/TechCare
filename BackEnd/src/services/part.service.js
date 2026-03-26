@@ -261,6 +261,142 @@ async function getInventoryStats() {
   };
 }
 
+async function getInventoryKpi({ startDate, endDate, groupBy = 'month' }) {
+  if (!['week', 'month'].includes(groupBy)) throw new Error('groupBy chỉ chấp nhận week hoặc month');
+
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+  if (end) end.setHours(23, 59, 59, 999);
+
+  const dateFilter = {};
+  if (start) dateFilter.$gte = start;
+  if (end) dateFilter.$lte = end;
+  const hasDateFilter = Object.keys(dateFilter).length > 0;
+
+  const periodExpr =
+    groupBy === 'month'
+      ? { $dateToString: { format: '%Y-%m', date: '$createdAt', timezone: 'Asia/Ho_Chi_Minh' } }
+      : {
+          $concat: [
+            { $toString: { $isoWeekYear: '$createdAt' } },
+            '-W',
+            {
+              $cond: [
+                { $lt: [{ $isoWeek: '$createdAt' }, 10] },
+                { $concat: ['0', { $toString: { $isoWeek: '$createdAt' } }] },
+                { $toString: { $isoWeek: '$createdAt' } },
+              ],
+            },
+          ],
+        };
+
+  // 1. Tổng giá trị tồn kho hiện tại
+  const stockValueAgg = await Part.aggregate([
+    { $group: { _id: null, totalValue: { $sum: { $multiply: ['$stock', '$price'] } } } },
+  ]);
+  const totalStockValue = stockValueAgg[0]?.totalValue || 0;
+
+  // 2. Chi phí nhập kho theo kỳ
+  const importMatchStage = hasDateFilter ? { $match: { createdAt: dateFilter } } : { $match: {} };
+  const importByPeriod = await ImportItem.aggregate([
+    importMatchStage,
+    { $addFields: { period: periodExpr } },
+    {
+      $group: {
+        _id: '$period',
+        totalImportCost: { $sum: { $multiply: ['$quantity', '$importPrice'] } },
+        totalImportQty: { $sum: '$quantity' },
+        importCount: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, period: '$_id', totalImportCost: 1, totalImportQty: 1, importCount: 1 } },
+  ]);
+
+  // 3. Doanh thu linh kiện xuất kho theo kỳ
+  const outMatchStage = hasDateFilter
+    ? { $match: { type: 'OUT', createdAt: dateFilter } }
+    : { $match: { type: 'OUT' } };
+  const outByPeriod = await InventoryTransaction.aggregate([
+    outMatchStage,
+    { $addFields: { period: periodExpr } },
+    {
+      $group: {
+        _id: '$period',
+        totalOutRevenue: { $sum: { $multiply: ['$quantity', '$unitPrice'] } },
+        totalOutQty: { $sum: '$quantity' },
+        outCount: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, period: '$_id', totalOutRevenue: 1, totalOutQty: 1, outCount: 1 } },
+  ]);
+
+  // Merge import + out theo period
+  const periodMap = new Map();
+  for (const row of importByPeriod) {
+    periodMap.set(row.period, { period: row.period, totalImportCost: row.totalImportCost, totalImportQty: row.totalImportQty, importCount: row.importCount, totalOutRevenue: 0, totalOutQty: 0, outCount: 0 });
+  }
+  for (const row of outByPeriod) {
+    const existing = periodMap.get(row.period) || { period: row.period, totalImportCost: 0, totalImportQty: 0, importCount: 0 };
+    periodMap.set(row.period, { ...existing, totalOutRevenue: row.totalOutRevenue, totalOutQty: row.totalOutQty, outCount: row.outCount });
+  }
+  const periodSummary = Array.from(periodMap.values())
+    .map((p) => ({ ...p, margin: p.totalOutRevenue - p.totalImportCost }))
+    .sort((a, b) => a.period.localeCompare(b.period));
+
+  // 4. Top 10 linh kiện tiêu thụ nhiều nhất
+  const topPartsMatchStage = hasDateFilter
+    ? { $match: { type: 'OUT', createdAt: dateFilter } }
+    : { $match: { type: 'OUT' } };
+  const topParts = await InventoryTransaction.aggregate([
+    topPartsMatchStage,
+    { $addFields: { period: periodExpr } },
+    { $group: { _id: '$part', totalQty: { $sum: '$quantity' }, totalRevenue: { $sum: { $multiply: ['$quantity', '$unitPrice'] } }, usageCount: { $sum: 1 } } },
+    { $sort: { totalQty: -1 } },
+    { $limit: 10 },
+    { $lookup: { from: 'parts', localField: '_id', foreignField: '_id', as: 'partInfo' } },
+    { $unwind: { path: '$partInfo', preserveNullAndEmptyArrays: true } },
+    { $project: { _id: 0, partId: '$_id', partName: { $ifNull: ['$partInfo.partName', 'Không rõ'] }, brand: { $ifNull: ['$partInfo.brand', ''] }, currentStock: { $ifNull: ['$partInfo.stock', 0] }, sellPrice: { $ifNull: ['$partInfo.price', 0] }, totalQty: 1, totalRevenue: 1, usageCount: 1 } },
+  ]);
+
+  // 5. Top 10 linh kiện nhập nhiều nhất
+  const topImportMatchStage = hasDateFilter ? { $match: { createdAt: dateFilter } } : { $match: {} };
+  const topImportParts = await ImportItem.aggregate([
+    topImportMatchStage,
+    { $addFields: { period: periodExpr } },
+    { $group: { _id: '$product', totalImportQty: { $sum: '$quantity' }, totalImportCost: { $sum: { $multiply: ['$quantity', '$importPrice'] } }, avgImportPrice: { $avg: '$importPrice' }, importCount: { $sum: 1 } } },
+    { $sort: { totalImportQty: -1 } },
+    { $limit: 10 },
+    { $lookup: { from: 'parts', localField: '_id', foreignField: '_id', as: 'partInfo' } },
+    { $unwind: { path: '$partInfo', preserveNullAndEmptyArrays: true } },
+    { $project: { _id: 0, partId: '$_id', partName: { $ifNull: ['$partInfo.partName', 'Không rõ'] }, brand: { $ifNull: ['$partInfo.brand', ''] }, currentStock: { $ifNull: ['$partInfo.stock', 0] }, sellPrice: { $ifNull: ['$partInfo.price', 0] }, totalImportQty: 1, totalImportCost: 1, avgImportPrice: 1, importCount: 1 } },
+  ]);
+
+  // 6. Tổng hợp toàn kỳ
+  const totalImportCost = periodSummary.reduce((s, p) => s + p.totalImportCost, 0);
+  const totalOutRevenue = periodSummary.reduce((s, p) => s + p.totalOutRevenue, 0);
+  const totalImportQty = periodSummary.reduce((s, p) => s + p.totalImportQty, 0);
+  const totalOutQty = periodSummary.reduce((s, p) => s + p.totalOutQty, 0);
+
+  return {
+    groupBy,
+    range: { startDate: start || null, endDate: end || null },
+    summary: {
+      totalStockValue,
+      totalImportCost,
+      totalOutRevenue,
+      totalMargin: totalOutRevenue - totalImportCost,
+      totalImportQty,
+      totalOutQty,
+      turnoverRate: totalImportQty > 0 ? (totalOutQty / totalImportQty) * 100 : 0,
+    },
+    periodSummary,
+    topConsumptionParts: topParts,
+    topImportParts,
+  };
+}
+
 module.exports = {
   listParts,
   createPart,
@@ -273,4 +409,5 @@ module.exports = {
   listStockAlerts,
   getInventoryStats,
   importStockOrder,
+  getInventoryKpi,
 };
