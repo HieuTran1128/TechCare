@@ -106,16 +106,3 @@ exports.getStats = async (_req, res) => {
     sendError(res, 500, err.message);
   }
 };
-
-exports.getInventoryKpi = async (req, res) => {
-  try {
-    const data = await service.getInventoryKpi({
-      startDate: req.query.startDate,
-      endDate: req.query.endDate,
-      groupBy: req.query.groupBy || 'month',
-    });
-    res.json(data);
-  } catch (err) {
-    sendError(res, 400, err.message);
-  }
-};
