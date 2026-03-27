@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Search, Trash2, Clock, X, Ban, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserPlus, Search, Trash2, Clock, X, Ban, ShieldCheck, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 // Định nghĩa type dựa trên backend schema
 interface Employee {
@@ -33,10 +34,58 @@ export const EmployeeManagement: React.FC = () => {
   });
 
   const [bulkErrors, setBulkErrors] = useState<string[]>([]);
-
   const [bulkStaffList, setBulkStaffList] = useState([
     { fullName: '', email: '', phone: '', role: 'technician' as Employee['role'] }
   ]);
+  const excelInputRef = useRef<HTMLInputElement>(null);
+
+  const roleMap: Record<string, Employee['role']> = {
+    'lễ tân': 'frontdesk', 'le tan': 'frontdesk', 'frontdesk': 'frontdesk',
+    'kỹ thuật': 'technician', 'ky thuat': 'technician', 'technician': 'technician', 'kỹ thuật viên': 'technician',
+    'kho': 'storekeeper', 'thủ kho': 'storekeeper', 'storekeeper': 'storekeeper',
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = evt.target?.result;
+      const workbook = XLSX.read(data, { type: 'binary' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      // Bỏ qua dòng header (dòng đầu tiên)
+      const dataRows = rows.slice(1).filter((row: any[]) => row.some((cell) => String(cell).trim() !== ''));
+
+      if (dataRows.length === 0) {
+        setBulkErrors(['File Excel không có dữ liệu hoặc sai định dạng']);
+        return;
+      }
+
+      const imported = dataRows.map((row: any[]) => {
+        const rawRole = String(row[3] ?? '').trim().toLowerCase();
+        const mappedRole = roleMap[rawRole] ?? 'technician';
+        return {
+          fullName: String(row[0] ?? '').trim(),
+          email: String(row[1] ?? '').trim(),
+          phone: String(row[2] ?? '').trim(),
+          role: mappedRole,
+        };
+      });
+
+      setBulkStaffList((prev) => {
+        // Nếu chỉ có 1 dòng trống thì thay thế, ngược lại append
+        const isEmpty = prev.length === 1 && !prev[0].fullName && !prev[0].email && !prev[0].phone;
+        return isEmpty ? imported : [...prev, ...imported];
+      });
+      setBulkErrors([]);
+    };
+    reader.readAsBinaryString(file);
+    // Reset input để có thể import lại cùng file
+    e.target.value = '';
+  };
 
   // Load danh sách nhân viên khi mount
   useEffect(() => {
@@ -478,6 +527,13 @@ export const EmployeeManagement: React.FC = () => {
                   Thêm nhiều dòng nhân viên. Mỗi dòng sẽ gửi mật khẩu qua email.
                 </p>
               </div>
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportExcel}
+              />
 
               {bulkErrors.length > 0 && (
                 <div className="mb-4 space-y-1">
@@ -573,10 +629,10 @@ export const EmployeeManagement: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <button
                   type="button"
-                  onClick={addBulkRow}
-                  className="sm:w-1/3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold py-3 rounded-xl"
+                  onClick={() => excelInputRef.current?.click()}
+                  className="sm:w-1/3 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2"
                 >
-                  + Thêm dòng
+                  <FileSpreadsheet size={16} /> Import Excel
                 </button>
                 <button
                   type="button"

@@ -24,7 +24,7 @@ const inventoryTransactionSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ['IN', 'OUT'],
+    enum: ['IN', 'OUT', 'WARRANTY_OUT'],
     required: true
   },
 

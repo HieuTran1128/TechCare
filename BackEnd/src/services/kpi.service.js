@@ -101,7 +101,20 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
           ],
         },
         revenueValue: {
-          $cond: [{ $eq: ['$status', 'PAYMENTED'] }, { $ifNull: ['$finalCost', 0] }, 0],
+          $cond: [
+            {
+              $in: ['$status', ['PAYMENTED', 'DIAGNOSING', 'WARRANTY_DONE']],
+            },
+            { $ifNull: ['$finalCost', 0] },
+            0,
+          ],
+        },
+        warrantyCostValue: {
+          $cond: [
+            { $eq: ['$status', 'WARRANTY_DONE'] },
+            0, // chi phí bảo hành tính riêng qua InventoryTransaction
+            0,
+          ],
         },
       },
     },
@@ -121,6 +134,7 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
         },
         avgLeadTime: { $avg: '$leadTimeHours' },
         totalRevenue: { $sum: '$revenueValue' },
+        totalWarrantyCost: { $sum: '$warrantyCostValue' },
       },
     },
     {
@@ -148,6 +162,7 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
         },
         avgLeadTime: { $ifNull: ['$avgLeadTime', 0] },
         totalRevenue: 1,
+        totalWarrantyCost: 1,
       },
     },
     { $sort: { totalRevenue: -1 } },
@@ -177,12 +192,14 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
     current.completedOrders += row.completedOrders;
     current.rejectedOrders += row.rejectedOrders;
     current.totalRevenue += row.totalRevenue;
+    current.totalWarrantyCost = (current.totalWarrantyCost || 0) + (row.totalWarrantyCost || 0);
     current.leadTimeSum += row.avgLeadTime * row.completedOrders;
     current.leadTimeCountWeight += row.completedOrders;
 
     current.periods.push({
       period: row.period,
       totalRevenue: row.totalRevenue,
+      totalWarrantyCost: row.totalWarrantyCost || 0,
       completionRate: row.completionRate,
       rejectionRate: row.rejectionRate,
       avgLeadTime: row.avgLeadTime,
@@ -200,6 +217,7 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
     };
 
     periodAgg.totalRevenue += row.totalRevenue;
+    periodAgg.totalWarrantyCost = (periodAgg.totalWarrantyCost || 0) + (row.totalWarrantyCost || 0);
     periodAgg.totalOrders += row.totalOrders;
     periodAgg.completedOrders += row.completedOrders;
     periodAgg.rejectedOrders += row.rejectedOrders;
@@ -219,6 +237,7 @@ async function getKpi({ startDate, endDate, groupBy = 'week' }) {
         completedOrders,
         rejectedOrders,
         totalRevenue: item.totalRevenue,
+        totalWarrantyCost: item.totalWarrantyCost || 0,
         completionRate: totalOrders ? (completedOrders / totalOrders) * 100 : 0,
         rejectionRate: totalOrders ? (rejectedOrders / totalOrders) * 100 : 0,
         avgLeadTime: item.leadTimeCountWeight ? item.leadTimeSum / item.leadTimeCountWeight : 0,

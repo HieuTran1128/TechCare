@@ -8,6 +8,7 @@ const StockAlert = require('../models/stockAlert.model');
 const { sendMail } = require('./mail.service');
 const { approvalTemplate, completionTemplate, inventoryRejectedTemplate } = require('../utils/mailTemplates');
 const ROLES = require('../constants/roles.constant');
+const { createWarrantiesForTicket } = require('./warranty.service');
 
 function generateTicketCode() {
   const year = new Date().getFullYear();
@@ -167,6 +168,17 @@ async function sendQuotation(ticketId, data, technicianId) {
     sentAt: new Date(),
   };
 
+  // Cập nhật warrantyMonths cho từng linh kiện nếu có
+  if (Array.isArray(data.partsWarranty) && ticket.inventoryRequest?.requiredParts?.length) {
+    data.partsWarranty.forEach(({ partId, warrantyMonths }) => {
+      const item = ticket.inventoryRequest.requiredParts.find(
+        (p) => String(p.part?._id || p.part) === String(partId)
+      );
+      if (item) item.warrantyMonths = warrantyMonths || 0;
+    });
+    ticket.markModified('inventoryRequest');
+  }
+
   ticket.approvalToken = crypto.randomUUID();
   ticket.approvalExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   ticket.status = 'QUOTED';
@@ -192,6 +204,7 @@ async function sendQuotation(ticketId, data, technicianId) {
         quantity,
         unitPrice,
         lineTotal: unitPrice * quantity,
+        warrantyMonths: item.warrantyMonths || 0,
       };
     });
 
@@ -343,6 +356,7 @@ async function completeTicket(ticketId, data, technicianId) {
     usedParts = (ticket.inventoryRequest.requiredParts || []).map((item) => ({
       part: item.part,
       quantity: item.quantity,
+      warrantyMonths: item.warrantyMonths || 0,
     }));
   }
 
@@ -385,13 +399,10 @@ async function completeTicket(ticketId, data, technicianId) {
 
   const customer = ticket.device?.customer;
   if (customer?.email) {
-    const frontendUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
-    const complaintUrl = `${frontendUrl}/#/complaint?ticket=${ticket.ticketCode}&name=${encodeURIComponent(customer.fullName)}&email=${encodeURIComponent(customer.email)}`;
     const html = completionTemplate({
       customerName: customer.fullName,
       ticketCode: ticket.ticketCode,
       pickupNote: data.pickupNote,
-      complaintUrl,
     });
 
     await sendMail({
@@ -481,6 +492,10 @@ async function markTicketAsPaid(ticketId, { paymentMethod, orderCode }, frontdes
   );
 
   await ticket.save();
+
+  // Tự động tạo warranty records cho các linh kiện có bảo hành
+  try { await createWarrantiesForTicket(ticket._id); } catch (_) {}
+
   return ticket;
 }
 
@@ -700,22 +715,52 @@ async function getAllTickets(query = {}, user = null) {
 }
 
 async function getManagerSummary() {
-  const [all, completed, rejected] = await Promise.all([
+  const [all, completed, rejected, warrantyDone] = await Promise.all([
     RepairTicket.countDocuments(),
+    // Đếm đơn đã thanh toán thực sự (không tính bảo hành)
     RepairTicket.countDocuments({ status: 'PAYMENTED' }),
     RepairTicket.countDocuments({ status: { $in: ['REJECTED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED'] } }),
+    RepairTicket.countDocuments({ status: 'WARRANTY_DONE' }),
   ]);
 
+  // Doanh thu thực: tính từ PAYMENTED + DIAGNOSING (bảo hành đang xử lý) + WARRANTY_DONE
   const revenueAgg = await RepairTicket.aggregate([
-    { $match: { status: 'PAYMENTED' } },
+    {
+      $match: {
+        status: { $in: ['PAYMENTED', 'DIAGNOSING', 'WARRANTY_DONE'] },
+      },
+    },
     { $group: { _id: null, totalRevenue: { $sum: '$finalCost' } } },
+  ]);
+
+  // Chi phí bảo hành (linh kiện xuất miễn phí) — tính từ InventoryTransaction WARRANTY_OUT
+  const InventoryTransaction = require('../models/inventoryTransaction.model');
+  const warrantyCostAgg = await InventoryTransaction.aggregate([
+    { $match: { type: 'WARRANTY_OUT' } },
+    {
+      $lookup: {
+        from: 'parts',
+        localField: 'part',
+        foreignField: '_id',
+        as: 'partInfo',
+      },
+    },
+    { $unwind: { path: '$partInfo', preserveNullAndEmptyArrays: true } },
+    {
+      $group: {
+        _id: null,
+        totalWarrantyCost: { $sum: { $multiply: ['$quantity', { $ifNull: ['$partInfo.price', 0] }] } },
+      },
+    },
   ]);
 
   return {
     totalTickets: all,
     completedTickets: completed,
     rejectedTickets: rejected,
+    warrantyDoneTickets: warrantyDone,
     totalRevenue: revenueAgg[0]?.totalRevenue || 0,
+    totalWarrantyCost: warrantyCostAgg[0]?.totalWarrantyCost || 0,
   };
 }
 

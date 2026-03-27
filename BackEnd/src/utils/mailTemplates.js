@@ -1,26 +1,60 @@
 function inviteTemplate(fullName, link) {
-  return `
-    <h2>Xin chào ${fullName},</h2>
-    <p>Bạn được mời tham gia hệ thống TechCare.</p>
-    <p>Nhấn vào nút bên dưới để kích hoạt tài khoản:</p>
-    <a href="${link}" 
-       style="padding:10px 20px;background:#4CAF50;color:white;text-decoration:none;border-radius:5px;">
-       Kích hoạt tài khoản
-    </a>
-    <p>Link có hiệu lực trong 24 giờ.</p>
-  `;
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Thư mời làm việc - TechCare</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:40px 16px;">
+<tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;">
+
+  <tr>
+    <td style="background:linear-gradient(160deg,#1e40af,#4f46e5);border-radius:16px 16px 0 0;padding:32px 36px;">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">TechCare Service</div>
+      <div style="font-size:24px;font-weight:800;color:#ffffff;line-height:1.2;">Thư mời làm việc</div>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="background:#ffffff;padding:36px;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">
+
+      <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:#0f172a;">Xin chào <span style="color:#4f46e5;">${fullName}</span>,</p>
+      <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.7;">Bạn đã được mời tham gia hệ thống quản lý <strong style="color:#0f172a;">TechCare</strong>. Nhấn vào nút bên dưới để kích hoạt tài khoản và bắt đầu làm việc.</p>
+
+      <div style="height:1px;background:#f1f5f9;margin-bottom:24px;"></div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+        <tr>
+          <td align="center">
+            <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#1e40af);color:#ffffff;text-decoration:none;padding:15px 40px;border-radius:12px;font-size:15px;font-weight:700;letter-spacing:0.02em;">Kích hoạt tài khoản</a>
+          </td>
+        </tr>
+      </table>
+
+      <div style="background:#fefce8;border:1px solid #fef08a;border-radius:10px;padding:12px 16px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#854d0e;">⏱ Liên kết có hiệu lực trong <strong>24 giờ</strong>. Sau thời gian này vui lòng liên hệ quản lý để được cấp lại.</p>
+      </div>
+
+    </td>
+  </tr>
+
+  <tr>
+    <td style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:16px 36px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Chào mừng bạn đến với đội ngũ</p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
 }
 
 function staffPasswordTemplate(fullName, email, password) {
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tài khoản nhân viên - TechCare</title>
-</head>
-<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Tài khoản nhân viên - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
   <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
     <div style="background:linear-gradient(120deg,#2563eb,#4f46e5);color:white;padding:20px;">
       <h1 style="margin:0;font-size:22px;">TechCare - Tài khoản nhân viên</h1>
@@ -28,7 +62,6 @@ function staffPasswordTemplate(fullName, email, password) {
     <div style="padding:20px;line-height:1.6;">
       <p>Xin chào <strong>${fullName}</strong>,</p>
       <p>Tài khoản của bạn đã được tạo trong hệ thống TechCare.</p>
-      <p>Dưới đây là thông tin đăng nhập:</p>
       <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:12px;border-radius:8px;margin:12px 0;">
         <p style="margin:0 0 6px;"><strong>Email:</strong> ${email}</p>
         <p style="margin:0;"><strong>Mật khẩu tạm:</strong> ${password}</p>
@@ -37,231 +70,205 @@ function staffPasswordTemplate(fullName, email, password) {
     </div>
   </div>
 </body>
-</html>
-  `;
+</html>`;
 }
 
 const approvalTemplate = ({
-  customerName,
-  ticketCode,
-  deviceType,
-  deviceBrand,
-  deviceModel,
-  diagnosisResult,
-  estimatedCost,
-  workDescription,
-  estimatedCompletionDate,
-  approveUrl,
-  rejectUrl,
-  partsCost,
-  partsCount,
-  partDetails = [],
-  laborCost,
-}) => {
-  return `
-<!DOCTYPE html>
+  customerName, ticketCode, deviceType, deviceBrand, deviceModel,
+  diagnosisResult, estimatedCost, workDescription, estimatedCompletionDate,
+  approveUrl, rejectUrl, partsCost, partsCount, partDetails = [], laborCost,
+}) => `<!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Báo giá sửa chữa - TechCare</title>
-</head>
-<body style="margin:0;padding:20px;background:#f1f5f9;font-family:Inter,Arial,sans-serif;color:#0f172a;">
-  <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.08);">
-    <div style="background:linear-gradient(135deg,#2563eb,#4f46e5);padding:22px 24px;color:white;">
-      <h1 style="margin:0;font-size:24px;line-height:1.2;font-weight:800;">TechCare - Báo giá sửa chữa</h1>
-      <p style="margin:8px 0 0;font-size:14px;opacity:.95;">Mã phiếu: <strong>${ticketCode}</strong></p>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Báo giá sửa chữa - TechCare</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:40px 16px;">
+<tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+  <tr>
+    <td style="background:linear-gradient(160deg,#1e40af,#4f46e5);border-radius:16px 16px 0 0;padding:32px 36px 28px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td>
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">TechCare Service</div>
+          <div style="font-size:26px;font-weight:800;color:#ffffff;line-height:1.2;">Báo giá sửa chữa</div>
+        </td>
+        <td align="right" valign="top">
+          <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 14px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:2px;">Mã phiếu</div>
+            <div style="font-size:13px;font-weight:700;color:#ffffff;">${ticketCode}</div>
+          </div>
+        </td>
+      </tr></table>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#ffffff;padding:32px 36px;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">
+      <p style="margin:0 0 6px;font-size:16px;color:#0f172a;">Xin chào <strong>${customerName}</strong>,</p>
+      <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Chúng tôi đã hoàn tất kiểm tra thiết bị và gửi báo giá sửa chữa cho phiếu <strong style="color:#1e40af;">${ticketCode}</strong>.</p>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+        <tr><td colspan="3" style="padding-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Thiết bị</span></td></tr>
+        <tr>
+          <td width="34%" style="padding-right:8px;"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">Loại máy</div><div style="font-size:14px;font-weight:700;color:#0f172a;">${deviceType || '—'}</div></div></td>
+          <td width="33%" style="padding-right:8px;"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">Hãng</div><div style="font-size:14px;font-weight:700;color:#0f172a;">${deviceBrand || '—'}</div></div></td>
+          <td width="33%"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">Model</div><div style="font-size:14px;font-weight:700;color:#0f172a;">${deviceModel || '—'}</div></div></td>
+        </tr>
+      </table>
+
+      <div style="height:1px;background:#f1f5f9;margin-bottom:20px;"></div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
+        <tr><td style="padding-bottom:6px;"><span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Chẩn đoán lỗi</span></td></tr>
+        <tr><td style="background:#fefce8;border:1px solid #fef08a;border-radius:10px;padding:14px 16px;font-size:14px;color:#713f12;line-height:1.6;">${diagnosisResult || 'Chưa có mô tả'}</td></tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+        <tr><td style="padding-bottom:6px;"><span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Hạng mục xử lý</span></td></tr>
+        <tr><td style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;font-size:14px;color:#14532d;line-height:1.6;">${workDescription || 'Sửa lỗi / bảo trì tiêu chuẩn'}</td></tr>
+      </table>
+
+      ${partsCount ? `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+        <tr><td style="padding-bottom:10px;"><span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Linh kiện thay thế</span></td></tr>
+        <tr><td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+          ${partDetails.map((item, idx) => `
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr><td style="padding:14px 16px;border-bottom:${idx < partDetails.length - 1 ? '1px solid #f1f5f9' : 'none'};">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td>
+                  <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:3px;">${item.name}${item.brand ? ` (${item.brand})` : ''}${item.warrantyMonths ? `&nbsp;<span style="padding:2px 8px;background:#ede9fe;color:#6d28d9;border-radius:20px;font-size:11px;font-weight:700;">BH ${item.warrantyMonths} tháng</span>` : ''}</div>
+                  <div style="font-size:12px;color:#94a3b8;">SL: ${item.quantity} &nbsp;·&nbsp; Đơn giá: ${Number(item.unitPrice).toLocaleString('vi-VN')} ₫</div>
+                </td>
+                <td align="right" style="white-space:nowrap;padding-left:12px;font-size:15px;font-weight:700;color:#0f172a;">${Number(item.lineTotal).toLocaleString('vi-VN')} ₫</td>
+              </tr></table>
+            </td></tr>
+          </table>`).join('')}
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr><td style="padding:12px 16px;background:#f1f5f9;border-top:1px solid #e2e8f0;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td style="font-size:13px;color:#475569;font-weight:600;">Tổng linh kiện</td>
+                <td align="right" style="font-size:15px;font-weight:800;color:#0f172a;">${Number(partsCost).toLocaleString('vi-VN')} ₫</td>
+              </tr></table>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>` : ''}
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+        <tr>
+          <td width="49%" style="padding-right:6px;"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;"><div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Tiền công thợ</div><div style="font-size:16px;font-weight:700;color:#0f172a;">${Number(laborCost || 0).toLocaleString('vi-VN')} ₫</div></div></td>
+          <td width="49%" style="padding-left:6px;"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;"><div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Dự kiến hoàn thành</div><div style="font-size:16px;font-weight:700;color:#0f172a;">${estimatedCompletionDate ? new Date(estimatedCompletionDate).toLocaleDateString('vi-VN') : 'Sẽ cập nhật'}</div></div></td>
+        </tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+        <tr><td style="background:linear-gradient(135deg,#1e40af,#4f46e5);border-radius:12px;padding:18px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="font-size:13px;color:rgba(255,255,255,0.75);font-weight:600;">Tổng chi phí ước tính</td>
+            <td align="right" style="font-size:24px;font-weight:900;color:#ffffff;">${Number(estimatedCost || 0).toLocaleString('vi-VN')} ₫</td>
+          </tr></table>
+        </td></tr>
+      </table>
+
+      <p style="margin:0 0 16px;font-size:14px;color:#64748b;text-align:center;">Vui lòng xác nhận để chúng tôi tiếp tục xử lý thiết bị của bạn:</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+        <tr>
+          <td width="49%" style="padding-right:6px;"><a href="${approveUrl}" style="display:block;background:#16a34a;color:#ffffff;text-decoration:none;text-align:center;padding:15px;border-radius:10px;font-size:15px;font-weight:700;">Đồng ý sửa chữa</a></td>
+          <td width="49%" style="padding-left:6px;"><a href="${rejectUrl}" style="display:block;background:#dc2626;color:#ffffff;text-decoration:none;text-align:center;padding:15px;border-radius:10px;font-size:15px;font-weight:700;">Từ chối</a></td>
+        </tr>
+      </table>
+      <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.6;">Liên kết có hiệu lực trong 24 giờ. Sau thời gian này, vui lòng liên hệ lại cửa hàng.</p>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:16px 36px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Cảm ơn quý khách đã tin tưởng dịch vụ của chúng tôi</p>
+    </td>
+  </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+const completionTemplate = ({ customerName, ticketCode, pickupNote }) => `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Thiết bị đã sửa xong - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
+  <div style="max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#059669,#0ea5e9);color:white;padding:24px 28px;">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">TechCare Service</div>
+      <div style="font-size:22px;font-weight:800;">Thiết bị đã hoàn thành</div>
+      <div style="margin-top:10px;background:rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;display:inline-block;font-size:13px;font-weight:600;">Mã phiếu: ${ticketCode}</div>
     </div>
-
-    <div style="padding:22px;line-height:1.6;">
-      <p style="margin:0 0 10px;">Xin chào <strong>${customerName}</strong>,</p>
-      <p style="margin:0 0 14px;color:#334155;">Chúng tôi đã hoàn tất kiểm tra thiết bị và gửi báo giá sửa chữa cho phiếu <strong>${ticketCode}</strong>.</p>
-
-      <div style="border:1px solid #bfdbfe;background:#f8fbff;border-radius:12px;padding:14px;margin:0 0 12px;">
-        <div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">Thông tin thiết bị</div>
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:8px 8px;">
-          <tr>
-            <td style="background:#fff;border:1px solid #dbeafe;border-radius:10px;padding:10px;">
-              <div style="font-size:11px;color:#64748b;">Loại máy</div>
-              <div style="font-size:14px;font-weight:700;">${deviceType || '-'}</div>
-            </td>
-            <td style="background:#fff;border:1px solid #dbeafe;border-radius:10px;padding:10px;">
-              <div style="font-size:11px;color:#64748b;">Hãng</div>
-              <div style="font-size:14px;font-weight:700;">${deviceBrand || '-'}</div>
-            </td>
-            <td style="background:#fff;border:1px solid #dbeafe;border-radius:10px;padding:10px;">
-              <div style="font-size:11px;color:#64748b;">Model</div>
-              <div style="font-size:14px;font-weight:700;">${deviceModel || '-'}</div>
-            </td>
-          </tr>
-        </table>
+    <div style="padding:28px;line-height:1.6;">
+      <p style="margin:0 0 12px;font-size:15px;">Xin chào <strong>${customerName}</strong>,</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;">Thiết bị của quý khách đã được sửa xong. Vui lòng đến cửa hàng để nhận máy.</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;padding:14px 16px;border-radius:10px;margin-bottom:20px;font-size:14px;color:#14532d;">
+        ${pickupNote || 'Vui lòng mang theo mã phiếu khi đến nhận máy.'}
       </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #2563eb;border-radius:10px;padding:12px;margin:0 0 10px;">
-        <div style="font-weight:700;margin-bottom:3px;">Mô tả lỗi kỹ thuật:</div>
-        <div style="color:#334155;">${diagnosisResult || 'Chưa có mô tả'}</div>
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #10b981;border-radius:10px;padding:12px;margin:0 0 10px;">
-        <div style="font-weight:700;margin-bottom:3px;">Hạng mục cần xử lý:</div>
-        <div style="color:#334155;">${workDescription || 'Sửa lỗi phần mềm / bảo trì tiêu chuẩn'}</div>
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #0ea5e9;border-radius:10px;padding:12px;margin:0 0 10px;">
-        <div style="font-weight:700;margin-bottom:6px;">Giá linh kiện cần thay:</div>
-        ${partsCount
-          ? `<div style="margin-top:6px;">
-              ${partDetails
-                .map(
-                  (item, index) => `
-                    <div style="padding:8px 0;border-bottom:${index === partDetails.length - 1 ? 'none' : '1px dashed #cbd5e1'};font-size:14px;">
-                      <div style="font-weight:700;color:#0f172a;">${item.name}</strong>${item.brand ? ` (${item.brand})` : ''}</div>
-                      <div style="color:#475569;">SL: ${item.quantity} • Đơn giá: ${Number(item.unitPrice || 0).toLocaleString('vi-VN')} ₫ • Thành tiền: ${Number(item.lineTotal || 0).toLocaleString('vi-VN')} ₫</div>
-                    </div>
-                  `,
-                )
-                .join('')}
-              <div style="margin-top:8px;font-weight:800;color:#0f172a;">Tổng linh kiện: ${Number(partsCost || 0).toLocaleString('vi-VN')} ₫</div>
-            </div>`
-          : 'Không có'}
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #8b5cf6;border-radius:10px;padding:12px;margin:0 0 10px;">
-        <strong>Tiền công thợ:</strong> ${Number(laborCost || 0).toLocaleString('vi-VN')} ₫
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:12px;margin:0 0 12px;">
-        <strong>Chi phí ước tính:</strong> ${Number(estimatedCost || 0).toLocaleString('vi-VN')} ₫<br/>
-        <strong>Dự kiến hoàn thành:</strong> ${estimatedCompletionDate ? new Date(estimatedCompletionDate).toLocaleDateString('vi-VN') : 'Sẽ cập nhật sau'}
-      </div>
-
-      <p style="margin:0 0 14px;">Vui lòng xác nhận để chúng tôi tiếp tục xử lý thiết bị:</p>
-      <div style="text-align:center;margin:18px 0 8px;">
-        <a href="${approveUrl}" style="display:inline-block;background:#10b981;color:#fff;text-decoration:none;padding:11px 20px;border-radius:999px;margin:0 6px 8px;font-weight:700;font-size:14px;">Đồng ý sửa chữa</a>
-        <a href="${rejectUrl}" style="display:inline-block;background:#ef4444;color:#fff;text-decoration:none;padding:11px 20px;border-radius:999px;margin:0 6px 8px;font-weight:700;font-size:14px;">Từ chối</a>
-      </div>
-
-      <p style="margin:8px 0 0;font-size:13px;color:#64748b;">Liên kết có hiệu lực trong 24 giờ.</p>
+      <p style="margin:0;font-size:14px;color:#475569;">Xin cảm ơn quý khách đã sử dụng dịch vụ TechCare.</p>
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 28px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Cảm ơn quý khách</p>
     </div>
   </div>
 </body>
-</html>
-  `;
-};
+</html>`;
 
-const completionTemplate = ({ customerName, ticketCode, pickupNote, complaintUrl }) => {
-  return `
-<!DOCTYPE html>
+const warrantyCompletionTemplate = ({ customerName, ticketCode, warrantyTicketCode, partName, note }) => `<!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thiết bị đã sửa xong - TechCare</title>
-</head>
-<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
-  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-    <div style="background:linear-gradient(120deg,#059669,#0ea5e9);color:white;padding:20px;">
-      <h1 style="margin:0;font-size:22px;">TechCare - Thiết bị đã hoàn thành</h1>
-      <p style="margin:8px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bảo hành hoàn tất - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
+  <div style="max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#7c3aed,#2563eb);color:white;padding:24px 28px;">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">TechCare Service</div>
+      <div style="font-size:22px;font-weight:800;">Bảo hành hoàn tất</div>
+      <div style="margin-top:10px;background:rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;display:inline-block;font-size:13px;font-weight:600;">Phiếu: ${warrantyTicketCode}</div>
     </div>
-    <div style="padding:20px;line-height:1.6;">
-      <p>Xin chào <strong>${customerName}</strong>,</p>
-      <p>Thiết bị của quý khách đã được sửa xong. Quý khách vui lòng đến cửa hàng để nhận máy.</p>
-      <div style="background:#f8fafc;border-left:4px solid #0ea5e9;padding:12px;border-radius:8px;margin:12px 0;">
-        ${pickupNote || 'Vui lòng mang theo biên nhận khi nhận máy.'}
+    <div style="padding:28px;line-height:1.6;">
+      <p style="margin:0 0 12px;font-size:15px;">Xin chào <strong>${customerName}</strong>,</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;">Thiết bị của quý khách đã được xử lý bảo hành thành công (phiếu gốc: <strong>${ticketCode}</strong>).</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;padding:14px 16px;border-radius:10px;margin-bottom:20px;">
+        <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px;">Linh kiện bảo hành</div>
+        <div style="font-size:14px;color:#14532d;">${partName}</div>
+        ${note ? `<div style="margin-top:8px;font-size:13px;color:#374151;">${note}</div>` : ''}
       </div>
-      <p>Xin cảm ơn quý khách đã sử dụng dịch vụ TechCare.</p>
-      ${complaintUrl ? `
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
-        <p style="color:#6b7280;font-size:13px;margin:0 0 10px;">Nếu quý khách chưa hài lòng về dịch vụ, vui lòng cho chúng tôi biết:</p>
-        <a href="${complaintUrl}" style="display:inline-block;background:#dc2626;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;">Gửi khiếu nại</a>
-      </div>` : ''}
+      <p style="margin:0;font-size:14px;color:#475569;">Quý khách vui lòng đến cửa hàng để nhận máy. Xin cảm ơn đã tin tưởng TechCare.</p>
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 28px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Cảm ơn quý khách</p>
     </div>
   </div>
 </body>
-</html>
-  `;
-};
+</html>`;
 
-const inventoryRejectedTemplate = ({ customerName, ticketCode, message }) => {
-  return `
-<!DOCTYPE html>
+const inventoryRejectedTemplate = ({ customerName, ticketCode, message }) => `<!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thông báo linh kiện - TechCare</title>
-</head>
-<body style="font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:20px; color:#1f2937;">
-  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-    <div style="background:linear-gradient(120deg,#ef4444,#f97316);color:white;padding:20px;">
-      <h1 style="margin:0;font-size:22px;">TechCare - Thông báo linh kiện</h1>
-      <p style="margin:8px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Thông báo linh kiện - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
+  <div style="max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#ef4444,#f97316);color:white;padding:24px 28px;">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">TechCare Service</div>
+      <div style="font-size:22px;font-weight:800;">Thông báo linh kiện</div>
+      <div style="margin-top:10px;background:rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;display:inline-block;font-size:13px;font-weight:600;">Mã phiếu: ${ticketCode}</div>
     </div>
-    <div style="padding:20px;line-height:1.6;">
-      <p>Xin chào <strong>${customerName}</strong>,</p>
-      <p>${message || 'Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.'}</p>
-      <p>Chúng tôi sẽ liên hệ lại khi có linh kiện phù hợp.</p>
+    <div style="padding:28px;line-height:1.6;">
+      <p style="margin:0 0 12px;font-size:15px;">Xin chào <strong>${customerName}</strong>,</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;">${message || 'Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.'}</p>
+      <p style="margin:0;font-size:14px;color:#475569;">Chúng tôi sẽ liên hệ lại khi có linh kiện phù hợp.</p>
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 28px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Cảm ơn quý khách</p>
     </div>
   </div>
 </body>
-</html>
-  `;
-};
+</html>`;
 
 module.exports = {
   inviteTemplate,
+  staffPasswordTemplate,
   approvalTemplate,
   completionTemplate,
   inventoryRejectedTemplate,
-  complaintNotifyTemplate,
-  complaintResolutionTemplate,
+  warrantyCompletionTemplate,
 };
-
-function complaintNotifyTemplate({ customerName, ticketCode, category, content, complaintId }) {
-  const categoryLabels = { SERVICE: 'Dịch vụ', QUALITY: 'Chất lượng sửa chữa', PRICE: 'Giá cả', ATTITUDE: 'Thái độ nhân viên', OTHER: 'Khác' };
-  return `
-<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Khiếu nại mới - TechCare</title></head>
-<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
-  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-    <div style="background:linear-gradient(120deg,#dc2626,#f97316);color:white;padding:20px;">
-      <h1 style="margin:0;font-size:20px;">⚠️ Khiếu nại mới từ khách hàng</h1>
-      <p style="margin:6px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
-    </div>
-    <div style="padding:20px;line-height:1.7;">
-      <p><strong>Khách hàng:</strong> ${customerName}</p>
-      <p><strong>Loại khiếu nại:</strong> ${categoryLabels[category] || category}</p>
-      <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px;border-radius:8px;margin:12px 0;">
-        <strong>Nội dung:</strong><br/>${content}
-      </div>
-      <p style="color:#6b7280;font-size:13px;">Mã khiếu nại: #${complaintId}</p>
-      <p>Vui lòng đăng nhập hệ thống TechCare để xem và xử lý khiếu nại này.</p>
-    </div>
-  </div>
-</body></html>`;
-}
-
-function complaintResolutionTemplate({ customerName, ticketCode, content, resolution, category }) {
-  const categoryLabels = { SERVICE: 'Dịch vụ', QUALITY: 'Chất lượng sửa chữa', PRICE: 'Giá cả', ATTITUDE: 'Thái độ nhân viên', OTHER: 'Khác' };
-  return `
-<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Phản hồi khiếu nại - TechCare</title></head>
-<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
-  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-    <div style="background:linear-gradient(120deg,#059669,#0ea5e9);color:white;padding:20px;">
-      <h1 style="margin:0;font-size:20px;">✅ Phản hồi khiếu nại từ TechCare</h1>
-      <p style="margin:6px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
-    </div>
-    <div style="padding:20px;line-height:1.7;">
-      <p>Xin chào <strong>${customerName}</strong>,</p>
-      <p>Chúng tôi đã nhận và xử lý khiếu nại <strong>${categoryLabels[category] || category}</strong> của quý khách.</p>
-      <div style="background:#f8fafc;border-left:4px solid #6b7280;padding:12px;border-radius:8px;margin:12px 0;">
-        <strong>Nội dung khiếu nại:</strong><br/>${content}
-      </div>
-      <div style="background:#f0fdf4;border-left:4px solid #059669;padding:12px;border-radius:8px;margin:12px 0;">
-        <strong>Kết quả xử lý:</strong><br/>${resolution}
-      </div>
-      <p>Cảm ơn quý khách đã phản hồi để TechCare ngày càng hoàn thiện hơn.</p>
-    </div>
-  </div>
-</body></html>`;
-}

@@ -10,6 +10,8 @@ interface Ticket {
   ticketCode: string;
   status: string;
   initialIssue: string;
+  isWarrantyClaim?: boolean;
+  warrantyClaimType?: 'STORE_FAULT' | 'CUSTOMER_FAULT';
   quote?: {
     diagnosisResult?: string;
     laborCost?: number;
@@ -49,6 +51,7 @@ const statusLabels: Record<string, string> = {
   CUSTOMER_REJECTED: 'Khách từ chối',
   RECEIVED: 'Mới tiếp nhận',
   DONE_INVENTORY_REJECTED: 'Kho từ chối',
+  WARRANTY_DONE: 'Bảo hành xong',
 };
 
 const statusColorClasses: Record<string, string> = {
@@ -68,6 +71,7 @@ const statusColorClasses: Record<string, string> = {
   CANCELLED: 'bg-slate-200 text-slate-700',
   PENDING: 'bg-yellow-100 text-yellow-700',
   DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-700',
+  WARRANTY_DONE: 'bg-violet-200 text-violet-800',
 };
 
 interface PartOption {
@@ -89,7 +93,7 @@ export const TechnicianBoard: React.FC = () => {
   const [parts, setParts] = useState<PartOption[]>([]);
   const [selectedTech, setSelectedTech] = useState('');
   const [active, setActive] = useState<Ticket | null>(null);
-  const [activeTab, setActiveTab] = useState<'request' | 'quote' | 'reject'>('request');
+  const [activeTab, setActiveTab] = useState<'request' | 'quote' | 'reject' | 'warranty'>('request');
   const [note, setNote] = useState('');
   const [rejectionMessage, setRejectionMessage] = useState('Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.');
   const [quoteError, setQuoteError] = useState('');
@@ -104,6 +108,9 @@ export const TechnicianBoard: React.FC = () => {
     workDescription: '',
     estimatedCompletionDate: '',
   });
+
+  // warrantyMonths per part: { [partId]: 0 | 1 | 3 | 6 }
+  const [partsWarranty, setPartsWarranty] = useState<Record<string, number>>({});
 
   const approvedPartsCost = useMemo(() => {
     const requiredParts = active?.inventoryRequest?.requiredParts || [];
@@ -154,7 +161,7 @@ export const TechnicianBoard: React.FC = () => {
       tickets.filter((t) => ['DIAGNOSING', 'WAITING_INVENTORY', 'INVENTORY_APPROVED', 'INVENTORY_REJECTED', 'QUOTED', 'CUSTOMER_APPROVED', 'IN_PROGRESS'].includes(t.status)),
     [tickets],
   );
-  const doneRaw = useMemo(() => tickets.filter((t) => ['COMPLETED', 'PAYMENTED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED'].includes(t.status)), [tickets]);
+  const doneRaw = useMemo(() => tickets.filter((t) => ['COMPLETED', 'PAYMENTED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED', 'WARRANTY_DONE'].includes(t.status)), [tickets]);
 
   const done = useMemo(() => {
     const q = doneSearch.trim().toLowerCase();
@@ -216,11 +223,12 @@ export const TechnicianBoard: React.FC = () => {
 
     await axios.patch(
       `${API_BASE}/ticket/${active._id}/quotation`,
-      { ...quote, laborCost: Number(quote.laborCost || 0), estimatedCost: Number(quote.estimatedCost || 0) },
+      { ...quote, laborCost: Number(quote.laborCost || 0), estimatedCost: Number(quote.estimatedCost || 0), partsWarranty: Object.entries(partsWarranty).map(([partId, warrantyMonths]) => ({ partId, warrantyMonths })) },
       { withCredentials: true },
     );
     setActive(null);
     setActiveTab('request');
+    setPartsWarranty({});
     loadTickets();
   };
 
@@ -240,6 +248,16 @@ export const TechnicianBoard: React.FC = () => {
   const complete = async (id: string) => {
     await axios.patch(`${API_BASE}/ticket/${id}/complete`, { pickupNote: note, usedParts: [], finalCost: 0 }, { withCredentials: true });
     setNote('');
+    loadTickets();
+  };
+
+  const completeWarranty = async (id: string) => {
+    await axios.patch(`${API_BASE}/warranties/ticket/${id}/complete`, { pickupNote: '' }, { withCredentials: true });
+    loadTickets();
+  };
+
+  const startWarrantyRepair = async (id: string) => {
+    await axios.patch(`${API_BASE}/warranties/ticket/${id}/start`, {}, { withCredentials: true });
     loadTickets();
   };
 
@@ -306,6 +324,9 @@ export const TechnicianBoard: React.FC = () => {
                 <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${statusColorClasses[t.status] || 'bg-slate-100 text-slate-700'}`}>
                   {statusLabels[t.status] || t.status}
                 </span>
+                {t.isWarrantyClaim && (
+                  <span className="ml-1 inline-flex px-2 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700">BẢO HÀNH</span>
+                )}
               </div>
               {renderTimeline(t.status)}
               <p className="text-sm mt-2">{t.device?.customer?.fullName}</p>
@@ -319,18 +340,22 @@ export const TechnicianBoard: React.FC = () => {
               {isTechnician && t.status === 'INVENTORY_APPROVED' && (
                 <button
                   onClick={() => {
-                    const existingQuote = t.quote || {};
-                    const laborValue = existingQuote.laborCost ?? existingQuote.estimatedCost;
-                    const laborCost = laborValue ? String(laborValue) : '';
-                    const totalCost = Number(laborValue || 0) + approvedPartsCost;
-                    setQuote({ diagnosisResult: existingQuote.diagnosisResult || '', laborCost, estimatedCost: totalCost ? String(totalCost) : '', workDescription: existingQuote.workDescription || '', estimatedCompletionDate: existingQuote.estimatedCompletionDate ? String(existingQuote.estimatedCompletionDate).slice(0, 10) : '' });
-                    setQuoteError('');
                     setActive(t);
-                    setActiveTab('quote');
+                    if (t.isWarrantyClaim && t.warrantyClaimType === 'STORE_FAULT') {
+                      setActiveTab('warranty');
+                    } else {
+                      const existingQuote = t.quote || {};
+                      const laborValue = existingQuote.laborCost ?? existingQuote.estimatedCost;
+                      const laborCost = laborValue ? String(laborValue) : '';
+                      const totalCost = Number(laborValue || 0) + approvedPartsCost;
+                      setQuote({ diagnosisResult: existingQuote.diagnosisResult || '', laborCost, estimatedCost: totalCost ? String(totalCost) : '', workDescription: existingQuote.workDescription || '', estimatedCompletionDate: existingQuote.estimatedCompletionDate ? String(existingQuote.estimatedCompletionDate).slice(0, 10) : '' });
+                      setQuoteError('');
+                      setActiveTab('quote');
+                    }
                   }}
-                  className="mt-2 text-sm bg-purple-600 text-white px-3 py-1 rounded-lg"
+                  className={`mt-2 text-sm text-white px-3 py-1 rounded-lg ${t.isWarrantyClaim && t.warrantyClaimType === 'STORE_FAULT' ? 'bg-violet-600' : 'bg-purple-600'}`}
                 >
-                  Nhập báo giá
+                  {t.isWarrantyClaim && t.warrantyClaimType === 'STORE_FAULT' ? 'Xử lý bảo hành' : 'Nhập báo giá'}
                 </button>
               )}
 
@@ -343,7 +368,9 @@ export const TechnicianBoard: React.FC = () => {
               )}
 
               {isTechnician && t.status === 'IN_PROGRESS' && (
-                <button onClick={() => complete(t._id)} className="mt-2 text-sm bg-indigo-600 text-white px-3 py-1 rounded-lg">Hoàn thành & gửi mail lấy máy</button>
+                t.isWarrantyClaim
+                  ? <button onClick={() => completeWarranty(t._id)} className="mt-2 text-sm bg-violet-600 text-white px-3 py-1 rounded-lg">Hoàn thành bảo hành & gửi mail</button>
+                  : <button onClick={() => complete(t._id)} className="mt-2 text-sm bg-indigo-600 text-white px-3 py-1 rounded-lg">Hoàn thành & gửi mail lấy máy</button>
               )}
             </motion.div>
           ))}
@@ -395,7 +422,12 @@ export const TechnicianBoard: React.FC = () => {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setActiveTab('request')} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'request' ? 'bg-blue-600 text-white' : 'border'}`}>Yêu cầu kho</button>
-                <button onClick={() => setActiveTab('quote')} disabled={active.status !== 'INVENTORY_APPROVED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'quote' ? 'bg-purple-600 text-white' : 'border'} disabled:opacity-50`}>Báo giá</button>
+                {!(active.isWarrantyClaim && active.warrantyClaimType === 'STORE_FAULT') && (
+                  <button onClick={() => setActiveTab('quote')} disabled={active.status !== 'INVENTORY_APPROVED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'quote' ? 'bg-purple-600 text-white' : 'border'} disabled:opacity-50`}>Báo giá</button>
+                )}
+                {active.isWarrantyClaim && active.warrantyClaimType === 'STORE_FAULT' && (
+                  <button onClick={() => setActiveTab('warranty')} disabled={active.status !== 'INVENTORY_APPROVED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'warranty' ? 'bg-violet-600 text-white' : 'border'} disabled:opacity-50`}>Bảo hành</button>
+                )}
                 <button onClick={() => setActiveTab('reject')} disabled={active.status !== 'INVENTORY_REJECTED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'reject' ? 'bg-rose-600 text-white' : 'border'} disabled:opacity-50`}>Từ chối kho</button>
               </div>
             </div>
@@ -439,11 +471,26 @@ export const TechnicianBoard: React.FC = () => {
                       <p className="text-slate-500">Không có linh kiện yêu cầu.</p>
                     )}
                     {(active.inventoryRequest?.requiredParts || []).map((item, index) => (
-                      <div key={`approved-${index}`} className="flex justify-between">
-                        <span>{item.part?.partName || 'Linh kiện'} {item.part?.brand ? `(${item.part.brand})` : ''}</span>
-                        <span>
-                          x{item.quantity || 0} • {(item.part?.price || 0).toLocaleString('vi-VN')} ₫
-                        </span>
+                      <div key={`approved-${index}`} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{item.part?.partName || 'Linh kiện'} {item.part?.brand ? `(${item.part.brand})` : ''}</span>
+                          <span>x{item.quantity || 0} • {(item.part?.price || 0).toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                        {item.part?._id && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-xs text-slate-500">Bảo hành:</span>
+                            {[0, 1, 3, 6].map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setPartsWarranty((prev) => ({ ...prev, [item.part!._id!]: m }))}
+                                className={`px-2 py-0.5 rounded text-xs border transition-all ${(partsWarranty[item.part?._id ?? ''] ?? 0) === m ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-600'}`}
+                              >
+                                {m === 0 ? 'Không' : `${m} tháng`}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -492,6 +539,34 @@ export const TechnicianBoard: React.FC = () => {
               <div className="border rounded-lg p-3 space-y-3">
                 <textarea className="w-full border rounded p-2" rows={4} value={rejectionMessage} onChange={(e) => setRejectionMessage(e.target.value)} />
                 <button onClick={sendInventoryRejection} disabled={active.status !== 'INVENTORY_REJECTED'} className="bg-rose-600 text-white px-3 py-2 rounded text-sm disabled:opacity-50">Gửi email cho khách</button>
+              </div>
+            )}
+
+            {activeTab === 'warranty' && active.isWarrantyClaim && active.warrantyClaimType === 'STORE_FAULT' && (
+              <div className="border border-violet-200 rounded-lg p-3 space-y-3 bg-violet-50">
+                <div className="text-xs font-bold uppercase text-violet-600 mb-1">Bảo hành miễn phí — Lỗi cửa hàng</div>
+                <div className="space-y-2 text-sm">
+                  {(active.inventoryRequest?.requiredParts || []).length === 0 ? (
+                    <p className="text-slate-500">Không có linh kiện yêu cầu.</p>
+                  ) : (
+                    (active.inventoryRequest?.requiredParts || []).map((item, index) => (
+                      <div key={index} className="flex justify-between bg-white rounded-lg px-3 py-2 border border-violet-100">
+                        <span className="font-medium">{item.part?.partName || 'Linh kiện'}{item.part?.brand ? ` (${item.part.brand})` : ''}</span>
+                        <span className="text-violet-700 font-bold">x{item.quantity || 0} · Miễn phí</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="rounded-lg bg-white border border-violet-200 p-2 text-xs text-violet-700">
+                  Linh kiện sẽ được thay miễn phí. Sau khi hoàn thành, hệ thống tự gửi mail thông báo khách đến lấy máy.
+                </div>
+                <button
+                  onClick={() => startWarrantyRepair(active._id).then(() => { setActive(null); setActiveTab('request'); })}
+                  disabled={active.status !== 'INVENTORY_APPROVED'}
+                  className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 w-full"
+                >
+                  Bắt đầu sửa bảo hành
+                </button>
               </div>
             )}
 
