@@ -42,6 +42,17 @@ const getStatusBadge = (status: string, inventoryStatus?: string) => {
     REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     CANCELLED: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300',
     PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    WAITING_CUSTOMER_APPROVAL: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    WARRANTY_DONE: 'bg-violet-100 text-violet-800 dark:bg-green-900/30 dark:text-green-300',
+    WARRANTY_IN_PROGRESS: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+    WARRANTY_COMPLETED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    WARRANTY_CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    WARRANTY_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    WARRANTY_PAID: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    WARRANTY_PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    WARRANTY_WAITING_CUSTOMER_APPROVAL: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    WARRANTY_DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    WARRANTY_DONE_INVENTORY_APPROVED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
     
   };
 
@@ -63,6 +74,18 @@ const getStatusBadge = (status: string, inventoryStatus?: string) => {
     REJECTED: 'Từ chối',
     CANCELLED: 'Đã hủy',
     PENDING: 'Đang chờ',
+    WAITING_CUSTOMER_APPROVAL: 'Đang chờ khách hàng xác nhận',
+    WARRANTY_DONE: 'Bảo hành xong',
+    WARRANTY_IN_PROGRESS: 'Đang bảo hành',
+    WARRANTY_COMPLETED: 'Bảo hành hoàn thành',
+    WARRANTY_CANCELLED: 'Bảo hành hủy',
+    WARRANTY_REJECTED: 'Bảo hành từ chối',
+    WARRANTY_PAID: 'Bảo hành đã thanh toán',
+    WARRANTY_PENDING: 'Bảo hành đang chờ',
+    WARRANTY_WAITING_CUSTOMER_APPROVAL: 'Bảo hành đang chờ khách hàng xác nhận',
+    WARRANTY_DONE_INVENTORY_REJECTED: 'Bảo hành kho từ chối',
+    WARRANTY_DONE_INVENTORY_APPROVED: 'Bảo hành kho đã duyệt',
+    
   };
 
   return (

@@ -5,6 +5,7 @@ const repairPartSchema = new mongoose.Schema(
     part: { type: mongoose.Schema.Types.ObjectId, ref: 'Part' },
     quantity: { type: Number, default: 1 },
     unitPrice: { type: Number, default: 0 },
+    warrantyMonths: { type: Number, default: 0 },
   },
   { _id: false },
 );
@@ -95,6 +96,7 @@ const repairTicketSchema = new mongoose.Schema(
         'COMPLETED',
         'PAYMENTED',
         'DONE_INVENTORY_REJECTED',
+        'WARRANTY_DONE',
       ],
       default: 'RECEIVED',
     },
@@ -112,6 +114,11 @@ const repairTicketSchema = new mongoose.Schema(
 
     repairParts: [repairPartSchema],
     statusHistory: [statusHistorySchema],
+
+    // Bảo hành
+    isWarrantyClaim: { type: Boolean, default: false },
+    originalTicket: { type: mongoose.Schema.Types.ObjectId, ref: 'RepairTicket' },
+    warrantyClaimType: { type: String, enum: ['STORE_FAULT', 'CUSTOMER_FAULT'] },
   },
   { timestamps: true },
 );

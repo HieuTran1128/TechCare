@@ -42,6 +42,17 @@ const statusLabels: Record<string, string> = {
   RECEIVED: 'Tiếp nhận',
   MANAGER_ASSIGNED: 'Quản lý phân công',
   DONE_INVENTORY_REJECTED: 'Kho từ chối',
+  WARRANTY_DONE: 'Bảo hành xong',
+  WARRANTY_IN_PROGRESS: 'Đang bảo hành',
+  WARRANTY_COMPLETED: 'Bảo hành hoàn thành',
+  WARRANTY_CANCELLED: 'Bảo hành hủy',
+  WARRANTY_REJECTED: 'Bảo hành từ chối',
+  WARRANTY_PAID: 'Bảo hành đã thanh toán',
+  WARRANTY_PENDING: 'Bảo hành đang chờ',
+  WARRANTY_WAITING_CUSTOMER_APPROVAL: 'Bảo hành đang chờ khách hàng xác nhận',
+  WARRANTY_DONE_INVENTORY_REJECTED: 'Bảo hành kho từ chối',
+  WARRANTY_DONE_INVENTORY_APPROVED: 'Bảo hành kho đã duyệt',
+
 };
 
 const statusColorClasses: Record<string, string> = {
@@ -61,6 +72,16 @@ const statusColorClasses: Record<string, string> = {
   CANCELLED: 'bg-slate-200 text-slate-700',
   PENDING: 'bg-yellow-100 text-yellow-700',
   DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-700',
+  WARRANTY_DONE: 'bg-violet-200 text-violet-800',
+  WARRANTY_IN_PROGRESS: 'bg-orange-100 text-orange-800',
+  WARRANTY_COMPLETED: 'bg-emerald-100 text-emerald-800',
+  WARRANTY_CANCELLED: 'bg-red-100 text-red-800',
+  WARRANTY_REJECTED: 'bg-red-100 text-red-800',
+  WARRANTY_PAID: 'bg-emerald-100 text-emerald-800',
+  WARRANTY_PENDING: 'bg-yellow-100 text-yellow-800',
+  WARRANTY_WAITING_CUSTOMER_APPROVAL: 'bg-indigo-100 text-indigo-800',
+  WARRANTY_DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-800',
+  WARRANTY_DONE_INVENTORY_APPROVED: 'bg-emerald-100 text-emerald-800',
 };
 
 export const AdminDashboard: React.FC = () => {
@@ -204,9 +225,9 @@ export const AdminDashboard: React.FC = () => {
               onChange={(e) => setPageSize(Number(e.target.value))}
               className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white"
             >
-              <option value={5}>5 / trang</option>
               <option value={10}>10 / trang</option>
               <option value={20}>20 / trang</option>
+              <option value={30}>30 / trang</option>
             </select>
           </div>
         </div>
