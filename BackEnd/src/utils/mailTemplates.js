@@ -149,7 +149,7 @@ const approvalTemplate = ({
   `;
 };
 
-const completionTemplate = ({ customerName, ticketCode, pickupNote }) => {
+const completionTemplate = ({ customerName, ticketCode, pickupNote, complaintUrl }) => {
   return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -171,6 +171,11 @@ const completionTemplate = ({ customerName, ticketCode, pickupNote }) => {
         ${pickupNote || 'Vui lòng mang theo biên nhận khi nhận máy.'}
       </div>
       <p>Xin cảm ơn quý khách đã sử dụng dịch vụ TechCare.</p>
+      ${complaintUrl ? `
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
+        <p style="color:#6b7280;font-size:13px;margin:0 0 10px;">Nếu quý khách chưa hài lòng về dịch vụ, vui lòng cho chúng tôi biết:</p>
+        <a href="${complaintUrl}" style="display:inline-block;background:#dc2626;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;">Gửi khiếu nại</a>
+      </div>` : ''}
     </div>
   </div>
 </body>
@@ -209,4 +214,54 @@ module.exports = {
   approvalTemplate,
   completionTemplate,
   inventoryRejectedTemplate,
+  complaintNotifyTemplate,
+  complaintResolutionTemplate,
 };
+
+function complaintNotifyTemplate({ customerName, ticketCode, category, content, complaintId }) {
+  const categoryLabels = { SERVICE: 'Dịch vụ', QUALITY: 'Chất lượng sửa chữa', PRICE: 'Giá cả', ATTITUDE: 'Thái độ nhân viên', OTHER: 'Khác' };
+  return `
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Khiếu nại mới - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
+  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#dc2626,#f97316);color:white;padding:20px;">
+      <h1 style="margin:0;font-size:20px;">⚠️ Khiếu nại mới từ khách hàng</h1>
+      <p style="margin:6px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
+    </div>
+    <div style="padding:20px;line-height:1.7;">
+      <p><strong>Khách hàng:</strong> ${customerName}</p>
+      <p><strong>Loại khiếu nại:</strong> ${categoryLabels[category] || category}</p>
+      <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Nội dung:</strong><br/>${content}
+      </div>
+      <p style="color:#6b7280;font-size:13px;">Mã khiếu nại: #${complaintId}</p>
+      <p>Vui lòng đăng nhập hệ thống TechCare để xem và xử lý khiếu nại này.</p>
+    </div>
+  </div>
+</body></html>`;
+}
+
+function complaintResolutionTemplate({ customerName, ticketCode, content, resolution, category }) {
+  const categoryLabels = { SERVICE: 'Dịch vụ', QUALITY: 'Chất lượng sửa chữa', PRICE: 'Giá cả', ATTITUDE: 'Thái độ nhân viên', OTHER: 'Khác' };
+  return `
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Phản hồi khiếu nại - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
+  <div style="max-width:640px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#059669,#0ea5e9);color:white;padding:20px;">
+      <h1 style="margin:0;font-size:20px;">✅ Phản hồi khiếu nại từ TechCare</h1>
+      <p style="margin:6px 0 0;opacity:.9;">Mã phiếu: <strong>${ticketCode}</strong></p>
+    </div>
+    <div style="padding:20px;line-height:1.7;">
+      <p>Xin chào <strong>${customerName}</strong>,</p>
+      <p>Chúng tôi đã nhận và xử lý khiếu nại <strong>${categoryLabels[category] || category}</strong> của quý khách.</p>
+      <div style="background:#f8fafc;border-left:4px solid #6b7280;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Nội dung khiếu nại:</strong><br/>${content}
+      </div>
+      <div style="background:#f0fdf4;border-left:4px solid #059669;padding:12px;border-radius:8px;margin:12px 0;">
+        <strong>Kết quả xử lý:</strong><br/>${resolution}
+      </div>
+      <p>Cảm ơn quý khách đã phản hồi để TechCare ngày càng hoàn thiện hơn.</p>
+    </div>
+  </div>
+</body></html>`;
+}
