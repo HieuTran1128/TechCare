@@ -7,7 +7,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { TechnicianBoard } from './pages/TechnicianBoard';
 import { Inventory } from './pages/Inventory';
-import { PayrollManagement } from './pages/PayRollManagement';
+import { PayrollManagement } from './pages/PayrollManagement';
 import { CustomerTracking } from './pages/CustomerTracking';
 import Settings from './pages/Settings';
 import { Help } from './pages/Help';
@@ -19,6 +19,8 @@ import Activate from './pages/ActivateAccount';
 import { ChatPage } from './pages/ChatPage';
 import { KPIDashboard } from './pages/KPIDashboard';
 import { PaymentResult } from './pages/PaymentResult';
+import { ComplaintForm } from './pages/ComplaintForm';
+import { ComplaintManagement } from './pages/ComplaintManagement';
 import { Toaster } from 'react-hot-toast';
 
 const AuthInitializer = () => {
@@ -58,6 +60,7 @@ const AppRoutes = () => {
       <Route path="/activate" element={<Activate />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/payment-result" element={<PaymentResult />} />
+      <Route path="/complaint" element={<ComplaintForm />} />
       <Route path="/tracking" element={<Layout><CustomerTracking /></Layout>} />
 
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['manager']}><Layout><AdminDashboard /></Layout></ProtectedRoute>} />
@@ -73,6 +76,7 @@ const AppRoutes = () => {
       <Route path="/chat" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><ChatPage /></Layout></ProtectedRoute>} />
       <Route path="/help" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><Help /></Layout></ProtectedRoute>} />
       <Route path="/payroll" element={<ProtectedRoute allowedRoles={['manager', 'technician', 'storekeeper', 'frontdesk']}><Layout><PayrollManagement /></Layout></ProtectedRoute>} />
+      <Route path="/complaints" element={<ProtectedRoute allowedRoles={['manager', 'frontdesk']}><Layout><ComplaintManagement /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

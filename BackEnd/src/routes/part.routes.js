@@ -24,6 +24,9 @@ router.get('/usage-history', auth, role(ROLES.MANAGER, ROLES.STOREKEEPER), contr
 // Manager dashboard stats
 router.get('/stats/summary', auth, role(ROLES.MANAGER, ROLES.STOREKEEPER), controller.getStats);
 
+// Inventory KPI (manager only)
+router.get('/kpi', auth, role(ROLES.MANAGER), controller.getInventoryKpi);
+
 // Storekeeper alerts manager about out-of-stock/low-stock
 router.post('/:id/alert', auth, role(ROLES.STOREKEEPER), controller.createAlert);
 

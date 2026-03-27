@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Upload } from 'lucide-react';
+import InventoryKPI from '../components/InventoryKPI';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -114,7 +115,7 @@ export const Inventory: React.FC = () => {
     outOfStock: 0,
   });
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'parts' | 'import' | 'usage' | 'alerts' | 'suppliers' | 'requests'>('parts');
+  const [tab, setTab] = useState<'parts' | 'import' | 'usage' | 'alerts' | 'suppliers' | 'requests' | 'kpi'>('parts');
 
   const [form, setForm] = useState({
     partName: '',
@@ -147,6 +148,21 @@ export const Inventory: React.FC = () => {
   const [editPrice, setEditPrice] = useState('');
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState('');
+
+  // Phân trang lịch sử nhập
+  const [importPage, setImportPage] = useState(1);
+  const importPageSize = 10;
+
+  // Phân trang lịch sử xuất
+  const [usagePage, setUsagePage] = useState(1);
+  const usagePageSize = 10;
+
+  // Nhập kho hàng loạt
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchSupplier, setBatchSupplier] = useState('');
+  const [batchNote, setBatchNote] = useState('');
+  const [batchItems, setBatchItems] = useState([{ partId: '', quantity: '', importPrice: '' }]);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const loadParts = async () => {
     const res = await axios.get(`${API_BASE}/parts`, { withCredentials: true, params: { search } });
@@ -510,6 +526,33 @@ export const Inventory: React.FC = () => {
     await loadAlerts();
   };
 
+  const submitBatchImport = async () => {
+    if (!batchSupplier) { setFeedback('Vui lòng chọn nhà cung cấp.'); return; }
+    const validItems = batchItems.filter((i) => i.partId && Number(i.quantity) > 0 && Number(i.importPrice) >= 0);
+    if (validItems.length === 0) { setFeedback('Vui lòng thêm ít nhất 1 linh kiện hợp lệ.'); return; }
+
+    try {
+      setBatchLoading(true);
+      await axios.post(
+        `${API_BASE}/parts/import`,
+        { supplierId: batchSupplier, note: batchNote, items: validItems.map((i) => ({ partId: i.partId, quantity: Number(i.quantity), importPrice: Number(i.importPrice) })) },
+        { withCredentials: true },
+      );
+      setFeedback(`Đã nhập kho hàng loạt ${validItems.length} linh kiện thành công.`);
+      setBatchModalOpen(false);
+      setBatchSupplier(''); setBatchNote('');
+      setBatchItems([{ partId: '', quantity: '', importPrice: '' }]);
+      await Promise.all([loadParts(), loadImports(), loadStats()]);
+      setTimeout(() => setFeedback(''), 3000);
+    } catch (err: any) {
+      setFeedback(err.response?.data?.message || 'Không thể nhập kho hàng loạt.');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const importTotalCost = batchItems.reduce((sum, i) => sum + Number(i.quantity || 0) * Number(i.importPrice || 0), 0);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -520,6 +563,11 @@ export const Inventory: React.FC = () => {
           <button onClick={() => setTab('parts')} className={`px-4 py-2 rounded-lg ${tab === 'parts' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
             Linh kiện
           </button>
+          {isManager && (
+            <button onClick={() => setBatchModalOpen(true)} className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold">
+              + Nhập hàng loạt
+            </button>
+          )}
           {isManager && (
             <button onClick={() => setTab('import')} className={`px-4 py-2 rounded-lg ${tab === 'import' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
               Lịch sử nhập
@@ -543,6 +591,11 @@ export const Inventory: React.FC = () => {
           <button onClick={() => setTab('alerts')} className={`px-4 py-2 rounded-lg ${tab === 'alerts' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
             Cảnh báo
           </button>
+          {isManager && (
+            <button onClick={() => setTab('kpi')} className={`px-4 py-2 rounded-lg ${tab === 'kpi' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
+              KPI Kho
+            </button>
+          )}
         </div>
       </div>
 
@@ -725,100 +778,154 @@ export const Inventory: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Trang {currentPage} / {totalPages}</p>
-            <div className="flex gap-2">
-              <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded border disabled:opacity-50">Trước</button>
-              <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded border disabled:opacity-50">Sau</button>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <p className="text-xs text-slate-500">Trang {currentPage} / {totalPages} • {sortedParts.length} linh kiện</p>
+            <div className="flex gap-1">
+              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40">«</button>
+              <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-40">Trước</button>
+              <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-40">Sau</button>
+              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40">»</button>
             </div>
           </div>
         </div>
       )}
 
-      {tab === 'import' && isManager && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-900">Lịch sử nhập kho</h2>
-            <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">
-              {imports.length} bản ghi
-            </span>
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 text-left">Linh kiện</th>
-                  <th className="px-3 py-2 text-left">Nhà cung cấp</th>
-                  <th className="px-3 py-2 text-left">Batch</th>
-                  <th className="px-3 py-2 text-left">Số lượng</th>
-                  <th className="px-3 py-2 text-left">Giá nhập</th>
-                  <th className="px-3 py-2 text-left">Thời gian</th>
-                  <th className="px-3 py-2 text-left">Người tạo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {imports.map((item) => (
-                  <tr key={item._id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                    <td className="px-3 py-2 font-medium text-slate-800">{item.product?.partName || 'N/A'}</td>
-                    <td className="px-3 py-2">{item.supplier?.name || 'N/A'}</td>
-                    <td className="px-3 py-2">{item.batchCode || 'N/A'}</td>
-                    <td className="px-3 py-2">{item.quantity}</td>
-                    <td className="px-3 py-2 font-semibold">{item.importPrice.toLocaleString('vi-VN')} ₫</td>
-                    <td className="px-3 py-2">{new Date(item.createdAt).toLocaleString('vi-VN')}</td>
-                    <td className="px-3 py-2">{item.createdBy?.fullName || 'N/A'}</td>
+      {tab === 'import' && isManager && (() => {
+        const importTotalPages = Math.max(1, Math.ceil(imports.length / importPageSize));
+        const pagedImports = imports.slice((importPage - 1) * importPageSize, importPage * importPageSize);
+        return (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-slate-900">Lịch sử nhập kho</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">{imports.length} bản ghi</span>
+                <button
+                  onClick={() => {
+                    const headers = ['Linh kiện', 'Hãng', 'Nhà cung cấp', 'Batch', 'Số lượng', 'Giá nhập (₫)', 'Thành tiền (₫)', 'Thời gian', 'Người tạo'];
+                    const rows = imports.map((item) => [`"${(item.product?.partName || 'N/A').replaceAll('"', '""')}"`, `"${(item.product?.brand || 'N/A').replaceAll('"', '""')}"`, `"${(item.supplier?.name || 'N/A').replaceAll('"', '""')}"`, item.batchCode || 'N/A', item.quantity, item.importPrice, item.quantity * item.importPrice, new Date(item.createdAt).toLocaleString('vi-VN'), `"${(item.createdBy?.fullName || 'N/A').replaceAll('"', '""')}"`]);
+                    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+                    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `lich-su-nhap-kho-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold"
+                >
+                  ↓ Export CSV
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Linh kiện</th>
+                    <th className="px-3 py-2 text-left">Nhà cung cấp</th>
+                    <th className="px-3 py-2 text-left">Batch</th>
+                    <th className="px-3 py-2 text-left">Số lượng</th>
+                    <th className="px-3 py-2 text-left">Giá nhập</th>
+                    <th className="px-3 py-2 text-left">Thành tiền</th>
+                    <th className="px-3 py-2 text-left">Thời gian</th>
+                    <th className="px-3 py-2 text-left">Người tạo</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tab === 'usage' && (isManager || isStorekeeper) && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-900">Lịch sử xuất kho sửa chữa</h2>
-            <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">
-              {usageHistory.length} bản ghi
-            </span>
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="text-left px-3 py-2.5">Linh kiện</th>
-                  <th className="text-left px-3 py-2.5">Mã phiếu</th>
-                  <th className="text-left px-3 py-2.5">Số lượng</th>
-                  <th className="text-left px-3 py-2.5">Đơn giá</th>
-                  <th className="text-left px-3 py-2.5">Thành tiền</th>
-                  <th className="text-left px-3 py-2.5">Thời gian</th>
-                  <th className="text-left px-3 py-2.5">Người thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usageHistory.map((item) => {
-                  const unitPrice = Number(item.unitPrice || 0);
-                  const totalPrice = unitPrice * Number(item.quantity || 0);
-
-                  return (
+                </thead>
+                <tbody>
+                  {pagedImports.map((item) => (
                     <tr key={item._id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                      <td className="px-3 py-2.5 font-medium text-slate-800">{item.part?.partName || 'N/A'}</td>
-                      <td className="px-3 py-2.5">{item.ticket?.ticketCode || 'N/A'}</td>
-                      <td className="px-3 py-2.5">{item.quantity}</td>
-                      <td className="px-3 py-2.5">{unitPrice.toLocaleString('vi-VN')} ₫</td>
-                      <td className="px-3 py-2.5 font-semibold text-slate-800">{totalPrice.toLocaleString('vi-VN')} ₫</td>
-                      <td className="px-3 py-2.5">{new Date(item.createdAt).toLocaleString('vi-VN')}</td>
-                      <td className="px-3 py-2.5">{item.createdBy?.fullName || 'N/A'}</td>
+                      <td className="px-3 py-2 font-medium text-slate-800">{item.product?.partName || 'N/A'}</td>
+                      <td className="px-3 py-2">{item.supplier?.name || 'N/A'}</td>
+                      <td className="px-3 py-2 text-xs text-slate-500">{item.batchCode || 'N/A'}</td>
+                      <td className="px-3 py-2">{item.quantity}</td>
+                      <td className="px-3 py-2">{item.importPrice.toLocaleString('vi-VN')} ₫</td>
+                      <td className="px-3 py-2 font-semibold">{(item.quantity * item.importPrice).toLocaleString('vi-VN')} ₫</td>
+                      <td className="px-3 py-2">{new Date(item.createdAt).toLocaleString('vi-VN')}</td>
+                      <td className="px-3 py-2">{item.createdBy?.fullName || 'N/A'}</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+              <p className="text-xs text-slate-500">Trang {importPage}/{importTotalPages} • {imports.length} bản ghi</p>
+              <div className="flex gap-1">
+                <button onClick={() => setImportPage(1)} disabled={importPage <= 1} className="px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40">«</button>
+                <button onClick={() => setImportPage((p) => Math.max(1, p - 1))} disabled={importPage <= 1} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-40">Trước</button>
+                <button onClick={() => setImportPage((p) => Math.min(importTotalPages, p + 1))} disabled={importPage >= importTotalPages} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-40">Sau</button>
+                <button onClick={() => setImportPage(importTotalPages)} disabled={importPage >= importTotalPages} className="px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40">»</button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {tab === 'usage' && (isManager || isStorekeeper) && (() => {
+        const usageTotalPages = Math.max(1, Math.ceil(usageHistory.length / usagePageSize));
+        const pagedUsage = usageHistory.slice((usagePage - 1) * usagePageSize, usagePage * usagePageSize);
+        return (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-slate-900">Lịch sử xuất kho sửa chữa</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">{usageHistory.length} bản ghi</span>
+                <button
+                  onClick={() => {
+                    const headers = ['Linh kiện', 'Hãng', 'Mã phiếu', 'Số lượng', 'Đơn giá (₫)', 'Thành tiền (₫)', 'Thời gian', 'Người thao tác'];
+                    const rows = usageHistory.map((item) => { const u = Number(item.unitPrice || 0); return [`"${(item.part?.partName || 'N/A').replaceAll('"', '""')}"`, `"${(item.part?.brand || 'N/A').replaceAll('"', '""')}"`, item.ticket?.ticketCode || 'N/A', item.quantity, u, u * Number(item.quantity || 0), new Date(item.createdAt).toLocaleString('vi-VN'), `"${(item.createdBy?.fullName || 'N/A').replaceAll('"', '""')}"`]; });
+                    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+                    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `lich-su-xuat-kho-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold"
+                >
+                  ↓ Export CSV
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="text-left px-3 py-2.5">Linh kiện</th>
+                    <th className="text-left px-3 py-2.5">Mã phiếu</th>
+                    <th className="text-left px-3 py-2.5">Số lượng</th>
+                    <th className="text-left px-3 py-2.5">Đơn giá</th>
+                    <th className="text-left px-3 py-2.5">Thành tiền</th>
+                    <th className="text-left px-3 py-2.5">Thời gian</th>
+                    <th className="text-left px-3 py-2.5">Người thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedUsage.map((item) => {
+                    const unitPrice = Number(item.unitPrice || 0);
+                    return (
+                      <tr key={item._id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                        <td className="px-3 py-2.5 font-medium text-slate-800">{item.part?.partName || 'N/A'}</td>
+                        <td className="px-3 py-2.5">{item.ticket?.ticketCode || 'N/A'}</td>
+                        <td className="px-3 py-2.5">{item.quantity}</td>
+                        <td className="px-3 py-2.5">{unitPrice.toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-3 py-2.5 font-semibold">{(unitPrice * item.quantity).toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-3 py-2.5">{new Date(item.createdAt).toLocaleString('vi-VN')}</td>
+                        <td className="px-3 py-2.5">{item.createdBy?.fullName || 'N/A'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+              <p className="text-xs text-slate-500">Trang {usagePage}/{usageTotalPages} • {usageHistory.length} bản ghi</p>
+              <div className="flex gap-1">
+                <button onClick={() => setUsagePage(1)} disabled={usagePage <= 1} className="px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40">«</button>
+                <button onClick={() => setUsagePage((p) => Math.max(1, p - 1))} disabled={usagePage <= 1} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-40">Trước</button>
+                <button onClick={() => setUsagePage((p) => Math.min(usageTotalPages, p + 1))} disabled={usagePage >= usageTotalPages} className="px-3 py-1.5 rounded-lg border text-xs disabled:opacity-40">Sau</button>
+                <button onClick={() => setUsagePage(usageTotalPages)} disabled={usagePage >= usageTotalPages} className="px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40">»</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === 'suppliers' && isManager && (
         <div className="space-y-4">
@@ -1231,6 +1338,91 @@ export const Inventory: React.FC = () => {
       )}
 
       {loading && <p>Đang tải dữ liệu...</p>}
+
+      {tab === 'kpi' && isManager && <InventoryKPI />}
+
+      {/* Modal nhập kho hàng loạt */}
+      {batchModalOpen && isManager && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg">Nhập kho hàng loạt</h3>
+              <button onClick={() => setBatchModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Nhà cung cấp *</label>
+                <select value={batchSupplier} onChange={(e) => setBatchSupplier(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm">
+                  <option value="">Chọn nhà cung cấp</option>
+                  {suppliers.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Ghi chú đơn hàng</label>
+                <input value={batchNote} onChange={(e) => setBatchNote(e.target.value)} placeholder="VD: Nhập hàng tháng 3" className="w-full border rounded-xl px-3 py-2 text-sm" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="grid grid-cols-12 gap-2 text-xs text-slate-500 font-semibold px-1">
+                <span className="col-span-5">Linh kiện *</span>
+                <span className="col-span-3">Số lượng *</span>
+                <span className="col-span-3">Giá nhập (₫) *</span>
+                <span className="col-span-1"></span>
+              </div>
+              {batchItems.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                  <select
+                    value={item.partId}
+                    onChange={(e) => { const next = [...batchItems]; next[idx] = { ...next[idx], partId: e.target.value }; setBatchItems(next); }}
+                    className="col-span-5 border rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option value="">Chọn linh kiện</option>
+                    {parts.map((p) => <option key={p._id} value={p._id}>{p.partName}{p.brand ? ` (${p.brand})` : ''} — tồn: {p.stock}</option>)}
+                  </select>
+                  <input
+                    type="number" min={1} placeholder="SL"
+                    value={item.quantity}
+                    onChange={(e) => { const next = [...batchItems]; next[idx] = { ...next[idx], quantity: e.target.value }; setBatchItems(next); }}
+                    className="col-span-3 border rounded-xl px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="number" min={0} placeholder="Giá"
+                    value={item.importPrice}
+                    onChange={(e) => { const next = [...batchItems]; next[idx] = { ...next[idx], importPrice: e.target.value }; setBatchItems(next); }}
+                    className="col-span-3 border rounded-xl px-3 py-2 text-sm"
+                  />
+                  <button
+                    onClick={() => setBatchItems(batchItems.length > 1 ? batchItems.filter((_, i) => i !== idx) : batchItems)}
+                    className="col-span-1 text-rose-500 hover:text-rose-700 text-lg font-bold"
+                  >✕</button>
+                </div>
+              ))}
+              <button
+                onClick={() => setBatchItems([...batchItems, { partId: '', quantity: '', importPrice: '' }])}
+                className="text-sm text-blue-600 hover:underline"
+              >+ Thêm dòng</button>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-between">
+              <span className="text-sm text-slate-600">Tổng chi phí đơn hàng:</span>
+              <span className="font-bold text-lg">{importTotalCost.toLocaleString('vi-VN')} ₫</span>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setBatchModalOpen(false)} className="px-4 py-2 border rounded-xl text-sm">Hủy</button>
+              <button
+                onClick={submitBatchImport}
+                disabled={batchLoading}
+                className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+              >
+                {batchLoading ? 'Đang xử lý...' : 'Xác nhận nhập kho'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

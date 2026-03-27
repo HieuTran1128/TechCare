@@ -385,10 +385,13 @@ async function completeTicket(ticketId, data, technicianId) {
 
   const customer = ticket.device?.customer;
   if (customer?.email) {
+    const frontendUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+    const complaintUrl = `${frontendUrl}/#/complaint?ticket=${ticket.ticketCode}&name=${encodeURIComponent(customer.fullName)}&email=${encodeURIComponent(customer.email)}`;
     const html = completionTemplate({
       customerName: customer.fullName,
       ticketCode: ticket.ticketCode,
       pickupNote: data.pickupNote,
+      complaintUrl,
     });
 
     await sendMail({

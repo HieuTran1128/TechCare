@@ -10,6 +10,7 @@ const partRoutes = require('./routes/part.routes');
 const supplierRoutes = require('./routes/supplier.routes');
 const kpiRoutes = require('./routes/kpi.routes');
 const userSalaryRoutes = require('./routes/userSalary.routes')
+const complaintRoutes = require('./routes/complaint.routes')
 
 const connectDB = require('./config/mongo')
 require('dotenv').config();
@@ -36,6 +37,7 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/schedules', workScheduleRoutes);
 app.use('/api/salary', userSalaryRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 
 module.exports = app;
