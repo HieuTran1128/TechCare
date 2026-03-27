@@ -310,10 +310,10 @@ export const KPIDashboard: React.FC = () => {
         <div className="bg-white rounded-2xl border p-4 h-[320px]">
           <h3 className="font-semibold mb-3">Doanh thu theo {groupBy === 'week' ? 'tuần' : 'tháng'}</h3>
           <ResponsiveContainer width="100%" height="90%">
-            <BarChart data={data.periodSummary}>
+            <BarChart data={data.periodSummary} margin={{ top: 4, right: 8, left: 16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="period" />
-              <YAxis />
+              <YAxis width={80} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(value: number | string | undefined) => formatCurrency(Number(value ?? 0))} />
               <Bar dataKey="totalRevenue" fill="#4f46e5" radius={[6, 6, 0, 0]} />
             </BarChart>
