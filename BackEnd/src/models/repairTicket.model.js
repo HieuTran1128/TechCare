@@ -119,6 +119,10 @@ const repairTicketSchema = new mongoose.Schema(
     isWarrantyClaim: { type: Boolean, default: false },
     originalTicket: { type: mongoose.Schema.Types.ObjectId, ref: 'RepairTicket' },
     warrantyClaimType: { type: String, enum: ['STORE_FAULT', 'CUSTOMER_FAULT'] },
+
+    // Khiếu nại
+    complaintToken: { type: String },
+    complaintTokenExpireAt: { type: Date },
   },
   { timestamps: true },
 );

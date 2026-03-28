@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { MENU_ITEMS } from '../constants';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, Menu, Gem, ShieldCheck, Briefcase, User } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 const roleLabel: Record<string, string> = {
   manager: 'Admin / Manager',
@@ -24,6 +27,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(true);
+  const [openComplaints, setOpenComplaints] = useState(0);
+
+  useEffect(() => {
+    if (user?.role !== 'manager') return;
+    axios.get(`${API_BASE}/complaints/stats`, { withCredentials: true })
+      .then((res) => setOpenComplaints(res.data.open || 0))
+      .catch(() => {});
+  }, [user, location.pathname]);
 
   const filteredMenu = useMemo(() => {
     if (!user) return [];
@@ -62,6 +73,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               >
                 <Icon size={16} className={active ? 'text-white' : 'text-slate-500 group-hover:text-slate-700'} />
                 <span>{item.label}</span>
+                {item.path === '/complaints' && openComplaints > 0 && (
+                  <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${active ? 'bg-white/25 text-white' : 'bg-rose-500 text-white'}`}>
+                    {openComplaints}
+                  </span>
+                )}
               </button>
             );
           })}

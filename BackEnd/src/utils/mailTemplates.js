@@ -190,7 +190,7 @@ const approvalTemplate = ({
 </body>
 </html>`;
 
-const completionTemplate = ({ customerName, ticketCode, pickupNote }) => `<!DOCTYPE html>
+const completionTemplate = ({ customerName, ticketCode, pickupNote, complaintUrl }) => `<!DOCTYPE html>
 <html lang="vi">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Thiết bị đã sửa xong - TechCare</title></head>
 <body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
@@ -206,7 +206,17 @@ const completionTemplate = ({ customerName, ticketCode, pickupNote }) => `<!DOCT
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;padding:14px 16px;border-radius:10px;margin-bottom:20px;font-size:14px;color:#14532d;">
         ${pickupNote || 'Vui lòng mang theo mã phiếu khi đến nhận máy.'}
       </div>
-      <p style="margin:0;font-size:14px;color:#475569;">Xin cảm ơn quý khách đã sử dụng dịch vụ TechCare.</p>
+      <p style="margin:0 0 24px;font-size:14px;color:#475569;">Xin cảm ơn quý khách đã sử dụng dịch vụ TechCare.</p>
+      ${complaintUrl ? `
+      <div style="border-top:1px solid #f1f5f9;padding-top:20px;">
+        <p style="margin:0 0 12px;font-size:13px;color:#64748b;">Nếu quý khách chưa hài lòng về dịch vụ, vui lòng cho chúng tôi biết:</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td align="center">
+            <a href="${complaintUrl}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">📝 Gửi khiếu nại</a>
+          </td></tr>
+        </table>
+        <p style="margin:10px 0 0;font-size:11px;color:#94a3b8;text-align:center;">Liên kết có hiệu lực trong 7 ngày</p>
+      </div>` : ''}
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 28px;text-align:center;">
       <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Cảm ơn quý khách</p>
@@ -271,4 +281,61 @@ module.exports = {
   completionTemplate,
   inventoryRejectedTemplate,
   warrantyCompletionTemplate,
+  complaintResolutionTemplate,
 };
+
+function complaintResolutionTemplate({ customerName, ticketCode, complaintCode, category, resolution, compensationType, compensationAmount }) {
+  const categoryMap = {
+    SERVICE_QUALITY: 'Chất lượng dịch vụ',
+    PRICE: 'Giá cả',
+    TECHNICIAN: 'Thái độ kỹ thuật viên',
+    TURNAROUND_TIME: 'Thời gian xử lý',
+    OTHER: 'Khác',
+  };
+  const categories = Array.isArray(category) ? category : [category];
+  const categoryLabels = categories.map((c) => categoryMap[c] || c).join(', ');
+  const compensationMap = {
+    NONE: 'Không có bồi thường',
+    REFUND: `Hoàn tiền: ${Number(compensationAmount || 0).toLocaleString('vi-VN')} ₫`,
+    DISCOUNT: `Giảm giá lần sau: ${Number(compensationAmount || 0).toLocaleString('vi-VN')} ₫`,
+    REDO: 'Sửa lại miễn phí',
+  };
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Phản hồi khiếu nại - TechCare</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:20px;color:#1f2937;">
+  <div style="max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:linear-gradient(120deg,#7c3aed,#4f46e5);color:white;padding:24px 28px;">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">TechCare Service</div>
+      <div style="font-size:22px;font-weight:800;">Phản hồi khiếu nại</div>
+      <div style="margin-top:10px;background:rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;display:inline-block;font-size:13px;font-weight:600;">Mã KN: ${complaintCode}</div>
+    </div>
+    <div style="padding:28px;line-height:1.6;">
+      <p style="margin:0 0 12px;font-size:15px;">Xin chào <strong>${customerName}</strong>,</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;">Chúng tôi đã xem xét khiếu nại của quý khách về phiếu <strong>${ticketCode}</strong> và có phản hồi như sau:</p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Loại khiếu nại</div>
+        <div style="font-size:14px;font-weight:600;color:#0f172a;">${categoryLabels}</div>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;padding:16px;border-radius:10px;margin-bottom:16px;">
+        <div style="font-size:12px;color:#15803d;font-weight:600;margin-bottom:6px;">Kết quả xử lý</div>
+        <div style="font-size:14px;color:#14532d;line-height:1.6;">${resolution}</div>
+      </div>
+
+      ${compensationType !== 'NONE' ? `
+      <div style="background:#fefce8;border:1px solid #fef08a;border-left:4px solid #eab308;padding:14px 16px;border-radius:10px;margin-bottom:16px;">
+        <div style="font-size:12px;color:#854d0e;font-weight:600;margin-bottom:4px;">Bồi thường</div>
+        <div style="font-size:14px;color:#713f12;font-weight:700;">${compensationMap[compensationType] || ''}</div>
+      </div>` : ''}
+
+      <p style="margin:0;font-size:13px;color:#64748b;">Nếu quý khách cần hỗ trợ thêm, vui lòng liên hệ trực tiếp cửa hàng. Chúng tôi xin lỗi vì sự bất tiện này.</p>
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 28px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">© TechCare Service &nbsp;·&nbsp; Cảm ơn quý khách đã phản hồi</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}

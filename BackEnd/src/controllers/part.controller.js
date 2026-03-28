@@ -106,3 +106,13 @@ exports.getStats = async (_req, res) => {
     sendError(res, 500, err.message);
   }
 };
+
+exports.getKPI = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+    const kpi = await service.getInventoryKPI({ fromDate, toDate });
+    res.json(kpi);
+  } catch (err) {
+    sendError(res, 500, err.message);
+  }
+};
