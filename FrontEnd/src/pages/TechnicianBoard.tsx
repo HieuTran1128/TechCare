@@ -1,493 +1,579 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Plus, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 interface Ticket {
   _id: string;
   ticketCode: string;
-  device: {
+  status: string;
+  initialIssue: string;
+  isWarrantyClaim?: boolean;
+  warrantyClaimType?: 'STORE_FAULT' | 'CUSTOMER_FAULT';
+  quote?: {
+    diagnosisResult?: string;
+    laborCost?: number;
+    estimatedCost?: number;
+    workDescription?: string;
+    estimatedCompletionDate?: string;
+  };
+  inventoryRequest?: {
+    status?: string;
+    requiredParts?: Array<{
+      part?: { _id?: string; partName?: string; brand?: string; price?: number };
+      quantity?: number;
+    }>;
+  };
+  technician?: { _id: string; fullName: string };
+  device?: {
+    deviceType?: string;
     brand: string;
     model: string;
-    customer?: { fullName: string };
+    customer?: { fullName: string; email: string };
   };
-  initialIssue: string;
-  diagnosisResult?: string;
-  estimatedCost?: number;
-  status: string;
-  technician?: { _id: string; fullName: string };
 }
 
-const TechnicianBoard: React.FC = () => {
+const statusLabels: Record<string, string> = {
+  COMPLETED: 'Hoàn thành',
+  PAYMENTED: 'Đã thanh toán',
+  REJECTED: 'Từ chối',
+  PENDING: 'Đang chờ',
+  IN_PROGRESS: 'Đang xử lý',
+  CANCELLED: 'Đã hủy',
+  DIAGNOSING: 'Kỹ thuật kiểm tra',
+  WAITING_INVENTORY: 'Chờ kho duyệt',
+  INVENTORY_APPROVED: 'Kho đã duyệt',
+  INVENTORY_REJECTED: 'Kho từ chối',
+  QUOTED: 'Đã gửi báo giá',
+  CUSTOMER_APPROVED: 'Khách đồng ý',
+  CUSTOMER_REJECTED: 'Khách từ chối',
+  RECEIVED: 'Mới tiếp nhận',
+  DONE_INVENTORY_REJECTED: 'Kho từ chối',
+  WARRANTY_DONE: 'Bảo hành xong',
+};
+
+const statusColorClasses: Record<string, string> = {
+  RECEIVED: 'bg-blue-100 text-blue-700',
+  MANAGER_ASSIGNED: 'bg-indigo-100 text-indigo-700',
+  DIAGNOSING: 'bg-violet-100 text-violet-700',
+  WAITING_INVENTORY: 'bg-amber-100 text-amber-700',
+  INVENTORY_APPROVED: 'bg-emerald-100 text-emerald-700',
+  INVENTORY_REJECTED: 'bg-rose-100 text-rose-700',
+  QUOTED: 'bg-cyan-100 text-cyan-700',
+  CUSTOMER_APPROVED: 'bg-teal-100 text-teal-700',
+  CUSTOMER_REJECTED: 'bg-red-100 text-red-700',
+  IN_PROGRESS: 'bg-purple-100 text-purple-700',
+  COMPLETED: 'bg-green-100 text-green-700',
+  PAYMENTED: 'bg-emerald-200 text-emerald-800',
+  REJECTED: 'bg-red-100 text-red-700',
+  CANCELLED: 'bg-slate-200 text-slate-700',
+  PENDING: 'bg-yellow-100 text-yellow-700',
+  DONE_INVENTORY_REJECTED: 'bg-red-100 text-red-700',
+  WARRANTY_DONE: 'bg-violet-200 text-violet-800',
+};
+
+interface PartOption {
+  _id: string;
+  partName: string;
+  brand?: string;
+  stock?: number;
+}
+
+const statusTimeline = ['RECEIVED', 'DIAGNOSING', 'WAITING_INVENTORY', 'INVENTORY_APPROVED', 'QUOTED', 'IN_PROGRESS', 'COMPLETED'];
+
+export const TechnicianBoard: React.FC = () => {
   const { user } = useAuth();
-  const role = user?.role;
+  const isFrontdesk = user?.role === 'frontdesk';
+  const isTechnician = user?.role === 'technician';
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [technicians, setTechnicians] = useState<{ id: string; name: string }[]>([]);
-  const [filterTech, setFilterTech] = useState('All');
-  const [loading, setLoading] = useState(true);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isDiagnoseModalOpen, setIsDiagnoseModalOpen] = useState(false);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [selectedTicketId, setSelectedTicketId] = useState<string>('');
+  const [technicians, setTechnicians] = useState<any[]>([]);
+  const [parts, setParts] = useState<PartOption[]>([]);
+  const [selectedTech, setSelectedTech] = useState('');
+  const [active, setActive] = useState<Ticket | null>(null);
+  const [activeTab, setActiveTab] = useState<'request' | 'quote' | 'reject' | 'warranty'>('request');
+  const [note, setNote] = useState('');
+  const [rejectionMessage, setRejectionMessage] = useState('Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.');
+  const [quoteError, setQuoteError] = useState('');
+  const [doneSearch, setDoneSearch] = useState('');
+  const [donePage, setDonePage] = useState(1);
+  const donePageSize = 6;
 
-  const [newTicket, setNewTicket] = useState({
-    deviceId: '',
-    initialIssue: '',
-    technicianId: '',
-  });
-
-  const [diagnoseData, setDiagnoseData] = useState({
+  const [quote, setQuote] = useState({
     diagnosisResult: '',
-    estimatedCost: 0,
+    laborCost: '',
+    estimatedCost: '',
+    workDescription: '',
+    estimatedCompletionDate: '',
   });
 
-  const isManager = role?.toUpperCase() === 'MANAGER';
-  const isTechnician = role?.toUpperCase() === 'TECHNICIAN';
-  const isFrontdesk = role?.toUpperCase() === 'FRONTDESK';
-  console.log('=== DEBUG AUTH ===');
-  console.log('user object from context:', user);             // toàn bộ user object (phải có trường role)
-  console.log('derived role string:', role);                   // role lấy từ user
-  console.log('typeof role:', typeof role);
-  console.log('isManager computed:', isManager);
-  console.log('role?.toUpperCase() === "MANAGER" ?', role?.toUpperCase() === 'MANAGER');
+  // warrantyMonths per part: { [partId]: 0 | 1 | 3 | 6 }
+  const [partsWarranty, setPartsWarranty] = useState<Record<string, number>>({});
 
-const fetchTickets = async () => {
-  setLoading(true);
-  try {
-    const params: Record<string, any> = { limit: 100 };
+  const approvedPartsCost = useMemo(() => {
+    const requiredParts = active?.inventoryRequest?.requiredParts || [];
+    return requiredParts.reduce((total, item) => total + (item.part?.price || 0) * (item.quantity || 0), 0);
+  }, [active]);
 
-    if (isManager) {
-      if (filterTech !== 'All') {
-        params.technicianId = filterTech;
-      }
-    } else if (isTechnician && user?._id) {
-      params.technicianId = user._id;
-    }
+  const todayString = useMemo(() => {
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const localDate = new Date(today.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 10);
+  }, []);
 
-    const res = await axios.get('/api/ticket', {
-      params,
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    });
+  const [inventoryReq, setInventoryReq] = useState({
+    needsReplacement: false,
+    noteFromTechnician: '',
+    requiredParts: [{ part: '', quantity: 1, unitPrice: 0 }],
+  });
 
-    console.log('API response:', res.data);           
-  console.log('res.data?.data:', res.data?.data);
-  console.log('typeof res.data?.data:', typeof res.data?.data);
+  const loadTickets = async () => {
+    const params: any = { limit: 100, sort: '-createdAt' };
+    if (isFrontdesk && selectedTech) params.technicianId = selectedTech;
 
-    // Bảo vệ 
-    const receivedData = res.data?.data ?? res.data ?? [];
-    
-    // Kiểm tra và ép kiểu về array
-    const ticketArray = Array.isArray(receivedData) ? receivedData : [];
-    
-    setTickets(ticketArray);
-  } catch (err: any) {
-    console.error('Lỗi fetch tickets:', err);
-    setTickets([]); // luôn reset về mảng rỗng khi lỗi
-  } finally {
-    setLoading(false);
-  }
-};
+    const res = await axios.get(`${API_BASE}/ticket`, { params, withCredentials: true });
+    setTickets(res.data.data || []);
+  };
 
-  const fetchTechnicians = async () => {
-  if (!isManager) return;
+  const loadTechnicians = async () => {
+    if (!isFrontdesk) return;
+    const res = await axios.get(`${API_BASE}/users?role=technician`, { withCredentials: true });
+    setTechnicians(res.data.data || []);
+  };
 
-  try {
-    const res = await axios.get('http://localhost:3000/api/users', {
-      params: { role: 'TECHNICIAN' },   // ← uppercase để chắc chắn
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    });
-
-    console.log('Users API full response:', res.data);
-
-    let usersList = [];
-
-    if (res.data?.data && Array.isArray(res.data.data)) {
-      usersList = res.data.data;
-    } else if (Array.isArray(res.data)) {
-      usersList = res.data;
-    }
-
-    setTechnicians(
-      usersList.map((u: any) => ({
-        id: u._id,
-        name: u.fullName || 'Không tên',
-      }))
-    );
-
-    console.log('Technicians loaded:', usersList.length);
-  } catch (err: any) {
-    console.error('Fetch technicians failed:', err?.response?.data || err);
-    setTechnicians([]);
-  }
-};
+  const loadParts = async () => {
+    const res = await axios.get(`${API_BASE}/parts`, { withCredentials: true });
+    setParts(res.data || []);
+  };
 
   useEffect(() => {
-    fetchTickets();
-    fetchTechnicians();
-  }, [filterTech, isManager]); // thêm isManager để an toàn
+    loadTickets().catch(() => undefined);
+    loadTechnicians().catch(() => undefined);
+    loadParts().catch(() => undefined);
+  }, [selectedTech]);
 
-  const handleAddTicket = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isManager && !isFrontdesk) return;
+  const pendingAssign = useMemo(() => tickets.filter((t) => t.status === 'RECEIVED'), [tickets]);
+  const inFlow = useMemo(
+    () =>
+      tickets.filter((t) => ['DIAGNOSING', 'WAITING_INVENTORY', 'INVENTORY_APPROVED', 'INVENTORY_REJECTED', 'QUOTED', 'CUSTOMER_APPROVED', 'IN_PROGRESS'].includes(t.status)),
+    [tickets],
+  );
+  const doneRaw = useMemo(() => tickets.filter((t) => ['COMPLETED', 'PAYMENTED', 'CUSTOMER_REJECTED', 'DONE_INVENTORY_REJECTED', 'WARRANTY_DONE'].includes(t.status)), [tickets]);
 
-    try {
-      const token = localStorage.getItem('token');
+  const done = useMemo(() => {
+    const q = doneSearch.trim().toLowerCase();
+    if (!q) return doneRaw;
+    return doneRaw.filter((t) => {
+      const code = String(t.ticketCode || '').toLowerCase();
+      const customer = String(t.device?.customer?.fullName || '').toLowerCase();
+      const deviceType = String(t.device?.deviceType || '').toLowerCase();
+      const brand = String(t.device?.brand || '').toLowerCase();
+      const model = String(t.device?.model || '').toLowerCase();
+      const device = `${deviceType} ${brand} ${model}`.toLowerCase();
+      return code.includes(q) || customer.includes(q) || device.includes(q);
+    });
+  }, [doneRaw, doneSearch]);
 
-      // Tạo phiếu
-      const createRes = await axios.post(
-        '/api/ticket',
-        {
-          deviceId: newTicket.deviceId,
-          initialIssue: newTicket.initialIssue,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  const doneTotalPages = Math.max(1, Math.ceil(done.length / donePageSize));
 
-      const ticketId = createRes.data._id;
+  const donePaged = useMemo(() => {
+    const start = (donePage - 1) * donePageSize;
+    return done.slice(start, start + donePageSize);
+  }, [done, donePage]);
 
-      // Phân công chỉ nếu là Manager và có chọn technician
-      if (isManager && newTicket.technicianId) {
-        await axios.patch(
-          `/api/ticket/${ticketId}/assign`,
-          { technicianId: newTicket.technicianId },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
+  const assignTech = async (ticketId: string, technicianId: string) => {
+    await axios.patch(`${API_BASE}/ticket/${ticketId}/assign`, { technicianId }, { withCredentials: true });
+    loadTickets();
+  };
 
-      setIsAddModalOpen(false);
-      setNewTicket({ deviceId: '', initialIssue: '', technicianId: '' });
-      fetchTickets();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể tạo & phân công phiếu');
+  const submitInventoryRequest = async () => {
+    if (!active) return;
+    const payload = inventoryReq.needsReplacement ? inventoryReq : { ...inventoryReq, noteFromTechnician: '', requiredParts: [] };
+
+    await axios.patch(`${API_BASE}/ticket/${active._id}/inventory-request`, payload, { withCredentials: true });
+
+    if (!inventoryReq.needsReplacement) {
+      setActiveTab('quote');
+      setActive({ ...active, status: 'INVENTORY_APPROVED', inventoryRequest: { ...(active.inventoryRequest || {}), status: 'NOT_REQUIRED', requiredParts: [] } });
+      loadTickets();
+      return;
     }
+
+    setActive(null);
+    setActiveTab('request');
+    loadTickets();
   };
 
-  const handleDiagnose = (id: string) => {
-    if (!isTechnician) return;
-    setSelectedTicketId(id);
-    setDiagnoseData({ diagnosisResult: '', estimatedCost: 0 });
-    setIsDiagnoseModalOpen(true);
-  };
+  const submitQuote = async () => {
+    if (!active || active.status !== 'INVENTORY_APPROVED') return;
 
-  const handleAssign = (id: string) => {
-    if (!isManager) return;
-    setSelectedTicketId(id);
-    setIsAssignModalOpen(true);
-  };
+    const selectedDate = quote.estimatedCompletionDate ? new Date(quote.estimatedCompletionDate) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const handleSubmitAssign = async (technicianId: string) => {
-    try {
-      await axios.patch(
-        `/api/ticket/${selectedTicketId}/assign`,
-        { technicianId },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }
-      );
-      setIsAssignModalOpen(false);
-      setSelectedTicketId('');
-      fetchTickets();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể phân công kỹ thuật viên');
+    if (selectedDate && selectedDate.getTime() < today.getTime()) {
+      setQuoteError('Ngày dự kiến hoàn thành không được ở quá khứ.');
+      return;
     }
+
+    setQuoteError('');
+
+    await axios.patch(
+      `${API_BASE}/ticket/${active._id}/quotation`,
+      { ...quote, laborCost: Number(quote.laborCost || 0), estimatedCost: Number(quote.estimatedCost || 0), partsWarranty: Object.entries(partsWarranty).map(([partId, warrantyMonths]) => ({ partId, warrantyMonths })) },
+      { withCredentials: true },
+    );
+    setActive(null);
+    setActiveTab('request');
+    setPartsWarranty({});
+    loadTickets();
   };
 
-  const handleSubmitDiagnose = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await axios.patch(
-        `/api/ticket/${selectedTicketId}/diagnose`,
-        {
-          diagnosisResult: diagnoseData.diagnosisResult,
-          estimatedCost: diagnoseData.estimatedCost,
-        },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }
-      );
-      setIsDiagnoseModalOpen(false);
-      setSelectedTicketId('');
-      setDiagnoseData({ diagnosisResult: '', estimatedCost: 0 });
-      fetchTickets();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể bắt đầu xử lý');
-    }
+  const sendInventoryRejection = async () => {
+    if (!active || active.status !== 'INVENTORY_REJECTED') return;
+    await axios.patch(`${API_BASE}/ticket/${active._id}/inventory-reject-mail`, { message: rejectionMessage }, { withCredentials: true });
+    setActive(null);
+    setActiveTab('request');
+    loadTickets();
   };
 
-  const getDisplayStatus = (status: string) => {
-    if (['RECEIVED', 'ASSIGNED'].includes(status)) return 'pending';
-    if (['IN_PROGRESS', 'WAITING_APPROVAL'].includes(status)) return 'in-progress';
-    if (['COMPLETED', 'REJECTED'].includes(status)) return 'completed';
-    return 'pending';
+  const startRepair = async (id: string) => {
+    await axios.patch(`${API_BASE}/ticket/${id}/start`, {}, { withCredentials: true });
+    loadTickets();
   };
 
-  const renderColumn = (title: string, statusKey: string) => {
-    const filtered = Array.isArray(tickets)
-    ? tickets.filter((t) => getDisplayStatus(t.status) === statusKey)
-    : [];
+  const complete = async (id: string) => {
+    await axios.patch(`${API_BASE}/ticket/${id}/complete`, { pickupNote: note, usedParts: [], finalCost: 0 }, { withCredentials: true });
+    setNote('');
+    loadTickets();
+  };
 
-  return (
-    <div className="flex-1 bg-white rounded-xl shadow p-4 min-w-[320px]">
-      <h2 className="font-bold text-lg mb-4">{title}</h2>
+  const completeWarranty = async (id: string) => {
+    await axios.patch(`${API_BASE}/warranties/ticket/${id}/complete`, { pickupNote: '' }, { withCredentials: true });
+    loadTickets();
+  };
 
-      {filtered.length === 0 && !loading && (
-        <div className="text-center text-gray-500 py-8">
-          Không có phiếu nào trong trạng thái này
-        </div>
-      )}
+  const startWarrantyRepair = async (id: string) => {
+    await axios.patch(`${API_BASE}/warranties/ticket/${id}/start`, {}, { withCredentials: true });
+    loadTickets();
+  };
 
-        {filtered.map((ticket) => (
-          <div key={ticket._id} className="border p-3 rounded-lg mb-3 bg-gray-50 hover:bg-gray-100 transition">
-            <div className="font-semibold">
-              {ticket.device?.brand} {ticket.device?.model}
-            </div>
-            {ticket.technician && (
-              <div className="text-sm text-blue-600 mt-1">
-                <strong>Kỹ thuật viên:</strong> {ticket.technician.fullName}
-              </div>
-            )}
-            <div className="text-sm text-gray-600 mt-1">
-              <strong>Lỗi ban đầu:</strong> {ticket.initialIssue}
-            </div>
-            {ticket.diagnosisResult && (
-              <div className="text-sm text-gray-600 mt-1">
-                <strong>Chẩn đoán:</strong> {ticket.diagnosisResult}
-              </div>
-            )}
-            {ticket.estimatedCost && ticket.estimatedCost > 0 && (
-              <div className="text-sm text-gray-600 mt-1">
-                <strong>Giá ước tính:</strong> {ticket.estimatedCost.toLocaleString()} VNĐ
-              </div>
-            )}
+  useEffect(() => {
+    setDonePage(1);
+  }, [doneSearch]);
 
-            <div className="flex justify-between mt-2 text-xs text-gray-500">
-              <span className="font-mono">{ticket.ticketCode}</span>
-              <span className="flex items-center gap-1">
-                <Clock size={12} /> {ticket.status}
-              </span>
-            </div>
+  useEffect(() => {
+    if (donePage > doneTotalPages) setDonePage(doneTotalPages);
+  }, [donePage, doneTotalPages]);
 
-            {isTechnician && getDisplayStatus(ticket.status) === 'pending' && (
-              <button
-                onClick={() => handleDiagnose(ticket._id)}
-                className="mt-3 w-full text-sm bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded transition"
-              >
-                Bắt đầu xử lý
-              </button>
-            )}
-
-            {isManager && !ticket.technician && getDisplayStatus(ticket.status) === 'pending' && (
-              <button
-                onClick={() => handleAssign(ticket._id)}
-                className="mt-3 w-full text-sm bg-green-600 hover:bg-green-700 text-white py-1.5 rounded transition"
-              >
-                Phân công kỹ thuật viên
-              </button>
-            )}
-          </div>
+  const renderTimeline = (status: string) => {
+    const currentIdx = statusTimeline.indexOf(status);
+    return (
+      <div className="flex gap-1 mt-2">
+        {statusTimeline.map((s, idx) => (
+          <div key={s} className={`h-1.5 flex-1 rounded-full ${currentIdx >= idx ? 'bg-indigo-500' : 'bg-slate-200'}`} />
         ))}
-
-        {(isManager || isFrontdesk) && statusKey === 'pending' && (
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full mt-4 border-2 border-dashed border-gray-300 p-3 rounded text-sm flex items-center justify-center gap-2 hover:border-gray-400 transition"
-          >
-            <Plus size={16} /> Thêm phiếu mới
-          </button>
-        )}
       </div>
     );
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold">
-          {isManager ? 'Quản lý phiếu sửa chữa' : 'Công việc của tôi'}
-        </h1>
-
-        {isManager && (
-          <select
-            value={filterTech}
-            onChange={(e) => setFilterTech(e.target.value)}
-            className="border border-gray-300 p-2 rounded min-w-[220px]"
-          >
-            <option value="All">Tất cả kỹ thuật viên</option>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+        </div>
+        {isFrontdesk && (
+          <select value={selectedTech} onChange={(e) => setSelectedTech(e.target.value)} className="border rounded-xl px-3 py-2 bg-white">
+            <option value="">Tất cả kỹ thuật viên</option>
             {technicians.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
+              <option key={t._id} value={t._id}>{t.fullName}</option>
             ))}
           </select>
         )}
       </div>
 
-      {loading ? (
-        <div className="text-center py-10">Đang tải dữ liệu...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {renderColumn('Chờ xử lý', 'pending')}
-          {renderColumn('Đang xử lý', 'in-progress')}
-          {renderColumn('Hoàn thành / Từ chối', 'completed')}
-        </div>
-      )}
-
-      {/* Modal tạo phiếu – Manager và Frontdesk */}
-      {isAddModalOpen && (isManager || isFrontdesk) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-5">Tạo phiếu sửa chữa mới</h2>
-
-            <form onSubmit={handleAddTicket}>
-              <input
-                type="text"
-                placeholder="Device ID"
-                value={newTicket.deviceId}
-                onChange={(e) => setNewTicket({ ...newTicket, deviceId: e.target.value })}
-                className="w-full border p-3 mb-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-
-              <textarea
-                placeholder="Mô tả lỗi ban đầu"
-                value={newTicket.initialIssue}
-                onChange={(e) => setNewTicket({ ...newTicket, initialIssue: e.target.value })}
-                className="w-full border p-3 mb-4 rounded h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-
-              {isManager && (
-                <select
-                  value={newTicket.technicianId}
-                  onChange={(e) => setNewTicket({ ...newTicket, technicianId: e.target.value })}
-                  className="w-full border p-3 mb-5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Chọn kỹ thuật viên (tùy chọn)</option>
-                  {technicians.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="bg-white border rounded-2xl p-4">
+          <h2 className="font-semibold mb-3">Chờ phân công</h2>
+          {pendingAssign.map((t) => (
+            <div key={t._id} className="border rounded-xl p-3 mb-3">
+              <p className="font-semibold">{t.ticketCode}</p>
+              <p className="text-sm">{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</p>
+              <p className="text-xs text-slate-500">{t.initialIssue}</p>
+              {isFrontdesk && (
+                <select defaultValue="" onChange={(e) => e.target.value && assignTech(t._id, e.target.value)} className="w-full mt-2 border rounded-lg px-2 py-1">
+                  <option value="">Phân công kỹ thuật viên</option>
+                  {technicians.map((tech) => (
+                    <option key={tech._id} value={tech._id}>{tech.fullName}</option>
                   ))}
                 </select>
               )}
+            </div>
+          ))}
+        </section>
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded transition"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded transition"
-                >
-                  {isManager && newTicket.technicianId ? 'Tạo & Phân công' : 'Tạo phiếu'}
-                </button>
+        <section className="bg-white border rounded-2xl p-4">
+          <h2 className="font-semibold mb-3">Đang xử lý</h2>
+          {inFlow.map((t) => (
+            <motion.div key={t._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="border rounded-xl p-3 mb-3">
+              <p className="font-semibold">{t.ticketCode}</p>
+              <div className="mb-1">
+                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${statusColorClasses[t.status] || 'bg-slate-100 text-slate-700'}`}>
+                  {statusLabels[t.status] || t.status}
+                </span>
+                {t.isWarrantyClaim && (
+                  <span className="ml-1 inline-flex px-2 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700">BẢO HÀNH</span>
+                )}
               </div>
-            </form>
+              {renderTimeline(t.status)}
+              <p className="text-sm mt-2">{t.device?.customer?.fullName}</p>
+              <p className="text-xs text-slate-500">{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</p>
+              <p className="text-xs text-slate-500">{t.initialIssue}</p>
+
+              {isTechnician && t.status === 'DIAGNOSING' && (
+                <button onClick={() => { setActive(t); setActiveTab('request'); setQuote({ diagnosisResult: '', laborCost: '', estimatedCost: '', workDescription: '', estimatedCompletionDate: '' }); setQuoteError(''); }} className="mt-2 text-sm bg-blue-600 text-white px-3 py-1 rounded-lg">Chẩn đoán & gửi yêu cầu kho</button>
+              )}
+
+              {isTechnician && t.status === 'INVENTORY_APPROVED' && (
+                <button
+                  onClick={() => {
+                    setActive(t);
+                    if (t.isWarrantyClaim && t.warrantyClaimType === 'STORE_FAULT') {
+                      setActiveTab('warranty');
+                    } else {
+                      const existingQuote = t.quote || {};
+                      const laborValue = existingQuote.laborCost ?? existingQuote.estimatedCost;
+                      const laborCost = laborValue ? String(laborValue) : '';
+                      const totalCost = Number(laborValue || 0) + approvedPartsCost;
+                      setQuote({ diagnosisResult: existingQuote.diagnosisResult || '', laborCost, estimatedCost: totalCost ? String(totalCost) : '', workDescription: existingQuote.workDescription || '', estimatedCompletionDate: existingQuote.estimatedCompletionDate ? String(existingQuote.estimatedCompletionDate).slice(0, 10) : '' });
+                      setQuoteError('');
+                      setActiveTab('quote');
+                    }
+                  }}
+                  className={`mt-2 text-sm text-white px-3 py-1 rounded-lg ${t.isWarrantyClaim && t.warrantyClaimType === 'STORE_FAULT' ? 'bg-violet-600' : 'bg-purple-600'}`}
+                >
+                  {t.isWarrantyClaim && t.warrantyClaimType === 'STORE_FAULT' ? 'Xử lý bảo hành' : 'Nhập báo giá'}
+                </button>
+              )}
+
+              {isTechnician && t.status === 'INVENTORY_REJECTED' && (
+                <button onClick={() => { setActive(t); setActiveTab('reject'); setRejectionMessage('Hiện tại cửa hàng không có linh kiện thay thế. Mong quý khách thông cảm.'); }} className="mt-2 text-sm bg-rose-600 text-white px-3 py-1 rounded-lg">Gửi thông báo cho khách</button>
+              )}
+
+              {isTechnician && t.status === 'CUSTOMER_APPROVED' && (
+                <button onClick={() => startRepair(t._id)} className="mt-2 text-sm bg-emerald-600 text-white px-3 py-1 rounded-lg">Bắt đầu sửa</button>
+              )}
+
+              {isTechnician && t.status === 'IN_PROGRESS' && (
+                t.isWarrantyClaim
+                  ? <button onClick={() => completeWarranty(t._id)} className="mt-2 text-sm bg-violet-600 text-white px-3 py-1 rounded-lg">Hoàn thành bảo hành & gửi mail</button>
+                  : <button onClick={() => complete(t._id)} className="mt-2 text-sm bg-indigo-600 text-white px-3 py-1 rounded-lg">Hoàn thành & gửi mail lấy máy</button>
+              )}
+            </motion.div>
+          ))}
+        </section>
+
+        <section className="bg-white border rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h2 className="font-semibold">Hoàn tất / Từ chối</h2>
+            <input
+              value={doneSearch}
+              onChange={(e) => setDoneSearch(e.target.value)}
+              placeholder="Tìm mã phiếu / khách / thiết bị"
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white w-52"
+            />
           </div>
-        </div>
-      )}
 
-      {/* Modal nhập chẩn đoán – chỉ Technician */}
-      {isDiagnoseModalOpen && isTechnician && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-5">Nhập thông tin chẩn đoán</h2>
-
-            <form onSubmit={handleSubmitDiagnose}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vấn đề thực sự của máy
-                </label>
-                <textarea
-                  placeholder="Mô tả chi tiết vấn đề sau khi kiểm tra"
-                  value={diagnoseData.diagnosisResult}
-                  onChange={(e) => setDiagnoseData({ ...diagnoseData, diagnosisResult: e.target.value })}
-                  className="w-full border p-3 rounded h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
+          {donePaged.map((t) => (
+            <div key={t._id} className="border rounded-xl p-3 mb-3">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="font-bold text-base text-slate-900">{t.ticketCode}</p>
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${statusColorClasses[t.status] || 'bg-slate-50 text-slate-500'}`}>
+                  {statusLabels[t.status] || t.status}
+                </span>
               </div>
+              <p className="text-sm">{t.device?.customer?.fullName}</p>
+              <p className="text-xs text-slate-500">{t.device?.deviceType || '-'} • {t.device?.brand || '-'} • {t.device?.model || '-'}</p>
+              <p className="text-xs text-slate-500">{t.initialIssue}</p>
+            </div>
+          ))}
 
-              <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá báo trước (VNĐ)
+          <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <span>Trang {donePage}/{doneTotalPages}</span>
+            <div className="flex gap-1">
+              <button onClick={() => setDonePage((p) => Math.max(1, p - 1))} disabled={donePage <= 1} className="px-2 py-1 border rounded disabled:opacity-40">Trước</button>
+              <button onClick={() => setDonePage((p) => Math.min(doneTotalPages, p + 1))} disabled={donePage >= doneTotalPages} className="px-2 py-1 border rounded disabled:opacity-40">Sau</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {active && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-xl rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg">Xử lý phiếu {active.ticketCode}</h3>
+                <p className="text-xs text-slate-500">{active.device?.deviceType || '-'} • {active.device?.brand || '-'} • {active.device?.model || '-'}</p>
+                <p className="text-xs text-slate-600 mt-1">{active.initialIssue || 'Chưa có mô tả lỗi'}</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setActiveTab('request')} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'request' ? 'bg-blue-600 text-white' : 'border'}`}>Yêu cầu kho</button>
+                {!(active.isWarrantyClaim && active.warrantyClaimType === 'STORE_FAULT') && (
+                  <button onClick={() => setActiveTab('quote')} disabled={active.status !== 'INVENTORY_APPROVED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'quote' ? 'bg-purple-600 text-white' : 'border'} disabled:opacity-50`}>Báo giá</button>
+                )}
+                {active.isWarrantyClaim && active.warrantyClaimType === 'STORE_FAULT' && (
+                  <button onClick={() => setActiveTab('warranty')} disabled={active.status !== 'INVENTORY_APPROVED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'warranty' ? 'bg-violet-600 text-white' : 'border'} disabled:opacity-50`}>Bảo hành</button>
+                )}
+                <button onClick={() => setActiveTab('reject')} disabled={active.status !== 'INVENTORY_REJECTED'} className={`px-3 py-1 rounded-lg text-sm ${activeTab === 'reject' ? 'bg-rose-600 text-white' : 'border'} disabled:opacity-50`}>Từ chối kho</button>
+              </div>
+            </div>
+
+            {activeTab === 'request' && (
+              <div className="border rounded-lg p-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={inventoryReq.needsReplacement} onChange={(e) => setInventoryReq({ ...inventoryReq, needsReplacement: e.target.checked })} />
+                  Có cần thay linh kiện (gửi kho duyệt)
                 </label>
+
+                {inventoryReq.needsReplacement && (
+                  <div className="space-y-2">
+                    {inventoryReq.requiredParts.map((item, index) => (
+                      <div key={`part-row-${index}`} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <select className="border rounded px-2 py-2" value={item.part} onChange={(e) => { const next = [...inventoryReq.requiredParts]; next[index] = { ...next[index], part: e.target.value }; setInventoryReq({ ...inventoryReq, requiredParts: next }); }}>
+                          <option value="">Chọn linh kiện</option>
+                          {parts.map((p) => (
+                            <option key={p._id} value={p._id}>{p.partName}{p.brand ? ` (${p.brand})` : ''} • tồn {p.stock ?? 0}</option>
+                          ))}
+                        </select>
+                        <input type="number" min={1} className="border rounded px-2 py-2" placeholder="Số lượng" value={item.quantity} onChange={(e) => { const next = [...inventoryReq.requiredParts]; next[index] = { ...next[index], quantity: Number(e.target.value) }; setInventoryReq({ ...inventoryReq, requiredParts: next }); }} />
+                        <button type="button" onClick={() => { const next = inventoryReq.requiredParts.filter((_, i) => i !== index); setInventoryReq({ ...inventoryReq, requiredParts: next.length ? next : [{ part: '', quantity: 1, unitPrice: 0 }] }); }} className="px-2 py-2 rounded border text-red-600">Xóa</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setInventoryReq({ ...inventoryReq, requiredParts: [...inventoryReq.requiredParts, { part: '', quantity: 1, unitPrice: 0 }] })} className="text-sm text-blue-600">+ Thêm linh kiện</button>
+                  </div>
+                )}
+
+                {inventoryReq.needsReplacement && <textarea className="w-full border rounded mt-2 p-2" placeholder="Ghi chú cho kho" value={inventoryReq.noteFromTechnician} onChange={(e) => setInventoryReq({ ...inventoryReq, noteFromTechnician: e.target.value })} />}
+                <button onClick={submitInventoryRequest} className="mt-2 bg-amber-600 text-white px-3 py-1 rounded text-sm">{inventoryReq.needsReplacement ? 'Gửi yêu cầu kho' : 'Bỏ qua yêu cầu linh kiện'}</button>
+              </div>
+            )}
+
+{activeTab === 'quote' && (
+              <div className="border rounded-lg p-3 space-y-3">
+                <div>
+                  <div className="text-xs uppercase text-slate-500 mb-2">Linh kiện đã duyệt</div>
+                  <div className="space-y-2 text-sm">
+                    {(active.inventoryRequest?.requiredParts || []).length === 0 && (
+                      <p className="text-slate-500">Không có linh kiện yêu cầu.</p>
+                    )}
+                    {(active.inventoryRequest?.requiredParts || []).map((item, index) => (
+                      <div key={`approved-${index}`} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{item.part?.partName || 'Linh kiện'} {item.part?.brand ? `(${item.part.brand})` : ''}</span>
+                          <span>x{item.quantity || 0} • {(item.part?.price || 0).toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                        {item.part?._id && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-xs text-slate-500">Bảo hành:</span>
+                            {[0, 1, 3, 6].map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setPartsWarranty((prev) => ({ ...prev, [item.part!._id!]: m }))}
+                                className={`px-2 py-0.5 rounded text-xs border transition-all ${(partsWarranty[item.part?._id ?? ''] ?? 0) === m ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-600'}`}
+                              >
+                                {m === 0 ? 'Không' : `${m} tháng`}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <input className="w-full border rounded p-2" placeholder="Chẩn đoán" value={quote.diagnosisResult} onChange={(e) => setQuote({ ...quote, diagnosisResult: e.target.value })} />
+                <div className="rounded border p-2 text-sm bg-slate-50">
+                  Giá linh kiện: <strong>{approvedPartsCost.toLocaleString('vi-VN')} ₫</strong>
+                </div>
                 <input
+                  className="w-full border rounded p-2"
                   type="number"
-                  placeholder="Nhập giá ước tính"
-                  value={diagnoseData.estimatedCost}
-                  onChange={(e) => setDiagnoseData({ ...diagnoseData, estimatedCost: Number(e.target.value) })}
-                  className="w-full border p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
-                  required
+                  placeholder="Tiền công thợ"
+                  value={quote.laborCost}
+                  onChange={(e) => {
+                    const laborCost = e.target.value;
+                    const totalCost = Number(laborCost || 0) + approvedPartsCost;
+                    setQuote({
+                      ...quote,
+                      laborCost,
+                      estimatedCost: totalCost ? String(totalCost) : '',
+                    });
+                  }}
                 />
-              </div>
-
-              <div className="flex gap-3">
+                <div className="rounded border p-2 text-sm bg-slate-50">
+                  Chi phí ước tính: <strong>{quote.estimatedCost ? Number(quote.estimatedCost).toLocaleString('vi-VN') : 0} ₫</strong>
+                </div>
+                <textarea className="w-full border rounded p-2" placeholder="Mô tả công việc" value={quote.workDescription} onChange={(e) => setQuote({ ...quote, workDescription: e.target.value })} />
+                <input
+                  className="w-full border rounded p-2"
+                  type="date"
+                  min={todayString}
+                  value={quote.estimatedCompletionDate}
+                  onChange={(e) => setQuote({ ...quote, estimatedCompletionDate: e.target.value })}
+                />
+                {quoteError && <p className="text-sm text-red-600">{quoteError}</p>}
                 <button
-                  type="button"
-                  onClick={() => setIsDiagnoseModalOpen(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded transition"
+                  onClick={submitQuote}
+                  disabled={active.status !== 'INVENTORY_APPROVED'}
+                  className="bg-blue-600 text-white px-3 py-2 rounded text-sm disabled:opacity-50"
                 >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded transition"
-                >
-                  Bắt đầu xử lý
+                  Gửi báo giá qua email khách
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
+            {activeTab === 'reject' && (
+              <div className="border rounded-lg p-3 space-y-3">
+                <textarea className="w-full border rounded p-2" rows={4} value={rejectionMessage} onChange={(e) => setRejectionMessage(e.target.value)} />
+                <button onClick={sendInventoryRejection} disabled={active.status !== 'INVENTORY_REJECTED'} className="bg-rose-600 text-white px-3 py-2 rounded text-sm disabled:opacity-50">Gửi email cho khách</button>
+              </div>
+            )}
 
-      {/* Modal phân công kỹ thuật viên – chỉ Manager */}
-      {isAssignModalOpen && isManager && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-5">Phân công kỹ thuật viên</h2>
+            {activeTab === 'warranty' && active.isWarrantyClaim && active.warrantyClaimType === 'STORE_FAULT' && (
+              <div className="border border-violet-200 rounded-lg p-3 space-y-3 bg-violet-50">
+                <div className="text-xs font-bold uppercase text-violet-600 mb-1">Bảo hành miễn phí — Lỗi cửa hàng</div>
+                <div className="space-y-2 text-sm">
+                  {(active.inventoryRequest?.requiredParts || []).length === 0 ? (
+                    <p className="text-slate-500">Không có linh kiện yêu cầu.</p>
+                  ) : (
+                    (active.inventoryRequest?.requiredParts || []).map((item, index) => (
+                      <div key={index} className="flex justify-between bg-white rounded-lg px-3 py-2 border border-violet-100">
+                        <span className="font-medium">{item.part?.partName || 'Linh kiện'}{item.part?.brand ? ` (${item.part.brand})` : ''}</span>
+                        <span className="text-violet-700 font-bold">x{item.quantity || 0} · Miễn phí</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="rounded-lg bg-white border border-violet-200 p-2 text-xs text-violet-700">
+                  Linh kiện sẽ được thay miễn phí. Sau khi hoàn thành, hệ thống tự gửi mail thông báo khách đến lấy máy.
+                </div>
+                <button
+                  onClick={() => startWarrantyRepair(active._id).then(() => { setActive(null); setActiveTab('request'); })}
+                  disabled={active.status !== 'INVENTORY_APPROVED'}
+                  className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 w-full"
+                >
+                  Bắt đầu sửa bảo hành
+                </button>
+              </div>
+            )}
 
-            <div className="mb-5">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Chọn kỹ thuật viên
-              </label>
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleSubmitAssign(e.target.value);
-                  }
-                }}
-                className="w-full border p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                defaultValue=""
-              >
-                <option value="">Chọn kỹ thuật viên</option>
-                {technicians.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsAssignModalOpen(false)}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded transition"
-              >
-                Hủy
-              </button>
-            </div>
+            <button onClick={() => { setActive(null); setActiveTab('request'); }} className="w-full bg-slate-200 rounded py-2">Đóng</button>
           </div>
         </div>
       )}
     </div>
   );
 };
-
-export { TechnicianBoard };

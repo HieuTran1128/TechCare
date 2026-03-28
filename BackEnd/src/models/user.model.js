@@ -13,10 +13,14 @@ const userSchema = new mongoose.Schema(
     },
     avatar: String,
     role: { type: String, required: true },
+    faceDescriptor: {
+      type: [Number],
+      default: [],
+    },
 
     status: {
       type: String,
-      enum: ["INVITED", "ACTIVE", "REJECTED"],
+      enum: ["INVITED", "ACTIVE", "BLOCKED", "REJECTED"],
       default: "INVITED",
     },
 

@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { User, Bell, Save, Upload, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState, useRef } from "react";
+import { useAuth } from "../context/AuthContext";
+import { User, Bell, Save, Upload, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const Settings: React.FC = () => {
   const { user, updateAvatar, fetchUserProfile } = useAuth();
@@ -16,13 +16,14 @@ const Settings: React.FC = () => {
     if (!file) return;
 
     // Validate file
-    if (!file.type.startsWith('image/')) {
-      toast.error('Vui lòng chọn file ảnh (JPG, PNG, GIF)');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh (JPG, PNG, GIF)");
       return;
     }
 
-    if (file.size > 800 * 1024) { // 800KB
-      toast.error('Kích thước ảnh tối đa 800KB');
+    if (file.size > 800 * 1024) {
+      // 800KB
+      toast.error("Kích thước ảnh tối đa 800KB");
       return;
     }
 
@@ -34,16 +35,16 @@ const Settings: React.FC = () => {
 
     try {
       await updateAvatar(file);
-  toast.success('Cập nhật ảnh đại diện thành công!');
-  await fetchUserProfile();
+      toast.success("Cập nhật ảnh đại diện thành công!");
+      await fetchUserProfile();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Có lỗi khi upload ảnh');
+      toast.error(err.response?.data?.message || "Có lỗi khi upload ảnh");
       setAvatarPreview(null); // rollback preview nếu fail
     } finally {
       setIsUploading(false);
       // Reset input để có thể chọn lại cùng file nếu cần
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -56,7 +57,9 @@ const Settings: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-0">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Cài đặt</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          Cài đặt
+        </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
           Quản lý hồ sơ cá nhân và các tùy chọn hệ thống
         </p>
@@ -79,9 +82,9 @@ const Settings: React.FC = () => {
                 src={
                   avatarPreview ||
                   user?.avatar ||
-                  'https://ui-avatars.com/api/?name=' +
-                    encodeURIComponent(user?.fullName || 'User') +
-                    '&background=random&size=128'
+                  "https://ui-avatars.com/api/?name=" +
+                    encodeURIComponent(user?.fullName || "User") +
+                    "&background=random&size=128"
                 }
                 alt="Avatar"
                 className="w-20 h-20 rounded-full object-cover border-4 border-slate-200 dark:border-slate-600 shadow-md"
@@ -144,7 +147,7 @@ const Settings: React.FC = () => {
               </label>
               <input
                 type="email"
-                value={user?.email || ''}
+                value={user?.email || ""}
                 disabled
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed"
               />
@@ -164,7 +167,9 @@ const Settings: React.FC = () => {
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-slate-900 dark:text-white">Email thông báo</p>
+              <p className="font-medium text-slate-900 dark:text-white">
+                Email thông báo
+              </p>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Nhận email khi có phiếu mới hoặc cập nhật quan trọng
               </p>
@@ -183,7 +188,7 @@ const Settings: React.FC = () => {
         <button
           type="button"
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50"
-          // onClick={handleSave} 
+          // onClick={handleSave}
         >
           <Save size={18} />
           Lưu thay đổi

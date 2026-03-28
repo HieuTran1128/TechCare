@@ -1,24 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Smartphone, User, Phone, AlertCircle, Plus, Search, ClipboardList, CheckCircle2, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import {
+  Smartphone,
+  User,
+  Phone,
+  AlertCircle,
+  Plus,
+  Search,
+  ClipboardList,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 
 // Cấu hình axios interceptor để tự động gắn token
 axios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('--- Axios gửi request ---');
-      console.log('URL:', config.url);
-      console.log('Token đầu 50 ký tự:', token.slice(0, 50));
-      console.log('Token cuối 50 ký tự:', token.slice(-50));
+      console.log("--- Axios gửi request ---");
+      console.log("URL:", config.url);
+      console.log("Token đầu 50 ký tự:", token.slice(0, 50));
+      console.log("Token cuối 50 ký tự:", token.slice(-50));
     } else {
-      console.log('KHÔNG CÓ TOKEN TRONG LOCALSTORAGE!');
+      console.log("KHÔNG CÓ TOKEN TRONG LOCALSTORAGE!");
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 interface Ticket {
@@ -31,7 +41,7 @@ interface Ticket {
   customerName?: string;
 }
 
-const API_BASE = 'http://localhost:3000/api'; // ← PORT BACKEND ĐÚNG (thường là 3000, không phải 3000)
+const API_BASE = "http://localhost:3000/api"; // ← PORT BACKEND ĐÚNG (thường là 3000, không phải 3000)
 
 export const ReceptionistBoard: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -41,14 +51,14 @@ export const ReceptionistBoard: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
-    customerName: '',
-    customerPhone: '',
-    customerEmail: '',
-    deviceType: '',
-    brand: '',
-    model: '',
-    issue: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    deviceType: "",
+    brand: "",
+    model: "",
+    issue: "",
+    priority: "medium" as "low" | "medium" | "high",
   });
 
   // Load danh sách ticket mới nhất
@@ -56,10 +66,12 @@ export const ReceptionistBoard: React.FC = () => {
     const fetchTickets = async () => {
       try {
         setIsLoadingTickets(true);
-        const res = await axios.get(`${API_BASE}/ticket?limit=6&sort=-createdAt`);
+        const res = await axios.get(
+          `${API_BASE}/ticket?limit=6&sort=-createdAt`,
+        );
         setTickets(res.data.data || res.data || []);
       } catch (err: any) {
-        console.error('Lỗi tải danh sách ticket:', err);
+        console.error("Lỗi tải danh sách ticket:", err);
         // Không set error UI để tránh crash, chỉ log
       } finally {
         setIsLoadingTickets(false);
@@ -81,13 +93,17 @@ export const ReceptionistBoard: React.FC = () => {
       let customerId: string;
 
       try {
-        const checkRes = await axios.get(`${API_BASE}/customers?email=${encodeURIComponent(formData.customerEmail.trim())}`);
+        const checkRes = await axios.get(
+          `${API_BASE}/customers?email=${encodeURIComponent(
+            formData.customerEmail.trim(),
+          )}`,
+        );
         if (checkRes.data.length > 0) {
           const existing = checkRes.data[0];
           customerId = existing._id;
-          console.log('Tái sử dụng khách hàng cũ theo email:', customerId);
+          console.log("Tái sử dụng khách hàng cũ theo email:", customerId);
         } else {
-          // Tạo mới 
+          // Tạo mới
           const customerRes = await axios.post(`${API_BASE}/customers`, {
             fullName: formData.customerName.trim(),
             phone: formData.customerPhone.trim(),
@@ -96,7 +112,10 @@ export const ReceptionistBoard: React.FC = () => {
           customerId = customerRes.data._id;
         }
       } catch (checkErr: any) {
-        console.warn('Không tìm thấy API check email, tạo mới customer:', checkErr.message);
+        console.warn(
+          "Không tìm thấy API check email, tạo mới customer:",
+          checkErr.message,
+        );
         const customerRes = await axios.post(`${API_BASE}/customers`, {
           fullName: formData.customerName.trim(),
           phone: formData.customerPhone.trim(),
@@ -124,30 +143,30 @@ export const ReceptionistBoard: React.FC = () => {
 
       setSubmitSuccess(true);
       setFormData({
-        customerName: '',
-        customerPhone: '',
-        customerEmail: '',
-        deviceType: '',
-        brand: '',
-        model: '',
-        issue: '',
-        priority: 'medium',
+        customerName: "",
+        customerPhone: "",
+        customerEmail: "",
+        deviceType: "",
+        brand: "",
+        model: "",
+        issue: "",
+        priority: "medium",
       });
 
       setTimeout(() => setSubmitSuccess(false), 4000);
     } catch (err: any) {
-      let msg = 'Có lỗi xảy ra khi tạo phiếu. Vui lòng thử lại.';
+      let msg = "Có lỗi xảy ra khi tạo phiếu. Vui lòng thử lại.";
       if (err.response) {
         if (err.response.status === 401) {
-          msg = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+          msg = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
         } else if (err.response.status === 409) {
-          msg = 'Số điện thoại hoặc thiết bị đã tồn tại.';
+          msg = "Số điện thoại hoặc thiết bị đã tồn tại.";
         } else {
           msg = err.response.data?.message || msg;
         }
       }
       setSubmitError(msg);
-      console.error('Lỗi tạo phiếu:', err);
+      console.error("Lỗi tạo phiếu:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -163,8 +182,12 @@ export const ReceptionistBoard: React.FC = () => {
               <Plus size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tiếp nhận mới</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Nhập thông tin khách hàng và máy</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                Tiếp nhận mới
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Nhập thông tin khách hàng và máy
+              </p>
             </div>
           </div>
 
@@ -180,7 +203,9 @@ export const ReceptionistBoard: React.FC = () => {
                 placeholder="VD: Anh Tuấn"
                 className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                 value={formData.customerName}
-                onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, customerName: e.target.value })
+                }
               />
             </div>
 
@@ -194,7 +219,9 @@ export const ReceptionistBoard: React.FC = () => {
                 placeholder="090x xxx xxx"
                 className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                 value={formData.customerPhone}
-                onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, customerPhone: e.target.value })
+                }
               />
             </div>
 
@@ -208,7 +235,9 @@ export const ReceptionistBoard: React.FC = () => {
                 placeholder="email@khach.com"
                 className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                 value={formData.customerEmail}
-                onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, customerEmail: e.target.value })
+                }
               />
             </div>
 
@@ -222,27 +251,37 @@ export const ReceptionistBoard: React.FC = () => {
                   placeholder="Điện thoại, Laptop..."
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   value={formData.deviceType}
-                  onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deviceType: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase">Hãng</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">
+                  Hãng
+                </label>
                 <input
                   required
                   placeholder="Apple, Samsung..."
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   value={formData.brand}
-                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, brand: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase">Model</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">
+                  Model
+                </label>
                 <input
                   required
                   placeholder="iPhone 14 Pro..."
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   value={formData.model}
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, model: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -257,7 +296,9 @@ export const ReceptionistBoard: React.FC = () => {
                 placeholder="VD: Vỡ màn hình, cảm ứng bình thường..."
                 className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none resize-none"
                 value={formData.issue}
-                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, issue: e.target.value })
+                }
               />
             </div>
 
@@ -313,7 +354,10 @@ export const ReceptionistBoard: React.FC = () => {
             <ClipboardList className="text-blue-500" /> Đơn mới tiếp nhận
           </h2>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Tìm phiếu..."
@@ -350,21 +394,27 @@ export const ReceptionistBoard: React.FC = () => {
                 </div>
 
                 <h3 className="font-bold text-slate-900 dark:text-white mb-1">
-                  {ticket.device?.brand} {ticket.device?.model} ({ticket.device?.deviceType})
+                  {ticket.device?.brand} {ticket.device?.model} (
+                  {ticket.device?.deviceType})
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-4">{ticket.initialIssue}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-4">
+                  {ticket.initialIssue}
+                </p>
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 uppercase">
-                      {ticket.customerName?.charAt(0) || '?'}
+                      {ticket.customerName?.charAt(0) || "?"}
                     </div>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      {ticket.customerName || 'Khách hàng'}
+                      {ticket.customerName || "Khách hàng"}
                     </span>
                   </div>
                   <span className="text-[10px] font-medium text-slate-400">
-                    {new Date(ticket.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(ticket.createdAt).toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
               </motion.div>

@@ -1,0 +1,82 @@
+[{
+  "_id": {
+    "$oid": "697f6e963a397df5fb3e1986"
+  },
+  "fullName": "Hoàng Vũ (Quản Lý)",
+  "email": "vunthde180740@fpt.edu.vn",
+  "passwordHash": "$2b$10$l/nY4VCyIVseyOzbL2mayuyaPLRshKvikZPDININpPjtQ.5l2Z7uG",
+  "role": "manager",
+  "status": "ACTIVE",
+  "createdAt": {
+    "$date": "2026-02-01T15:17:42.772Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-19T13:26:04.336Z"
+  },
+  "__v": 0,
+  "avatar": "https://res.cloudinary.com/dupoo7ljr/image/upload/v1770006727/techcare/avatars/su348vdqfxkmu9z1lv8m.png",
+  "forgotPasswordExpiresAt": {
+    "$date": "2026-03-19T12:52:12.269Z"
+  },
+  "forgotPasswordOTP": "599537",
+  "phone": ""
+},
+{
+  "_id": {
+    "$oid": "69aee5413195a6fa5d1264fa"
+  },
+  "fullName": "Hoàng Vũ (Kỹ Thuật)",
+  "phone": "0914733450",
+  "email": "vuker1212004@gmail.com",
+  "passwordHash": "$2b$10$cSbyZGL2CqQ633xOvoew3eCjNBIR5alxjasELlethHrUDdDQP/GmC",
+  "role": "technician",
+  "status": "ACTIVE",
+  "invitationToken": null,
+  "invitationExpiresAt": null,
+  "createdAt": {
+    "$date": "2026-03-09T15:20:33.576Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-09T15:32:47.409Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69aee8a5fe31fa8ca68f00dc"
+  },
+  "fullName": "Hoàng Vũ (Lễ Tân)",
+  "phone": "",
+  "email": "khongten1212004@gmail.com",
+  "passwordHash": "$2b$10$WuVNVIzgX6qcE4Wxe801Iuq3dUbdjOwj6DNNV4/O8l2ssM5p0jUnC",
+  "role": "frontdesk",
+  "status": "ACTIVE",
+  "invitationToken": null,
+  "invitationExpiresAt": null,
+  "createdAt": {
+    "$date": "2026-03-09T15:35:01.339Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-19T13:06:04.687Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69aefa99fe31fa8ca68f0c04"
+  },
+  "fullName": "Hoàng Vũ (Kho)",
+  "email": "haitmde180679@fpt.edu.vn",
+  "passwordHash": "$2b$10$VNHQ8rcdMPdP.xTGmonEvu8p5Q0LUUIgRc327cqtHqXjyLwd/MjWe",
+  "role": "storekeeper",
+  "status": "ACTIVE",
+  "invitationToken": null,
+  "invitationExpiresAt": null,
+  "createdAt": {
+    "$date": "2026-03-09T16:51:37.884Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-09T16:51:57.606Z"
+  },
+  "__v": 0
+}]

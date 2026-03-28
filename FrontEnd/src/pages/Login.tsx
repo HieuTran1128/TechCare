@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import * as faceapi from 'face-api.js';
 import {
   Wrench,
   Mail,
@@ -11,38 +12,43 @@ import {
   Shield,
   Package,
   ClipboardList,
+  ScanFace,
+  RefreshCw
 } from "lucide-react";
 import { motion } from "framer-motion";
 import axios from "axios";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const DEMO_ACCOUNTS = [
   {
     role: "Quản lý",
-    email: "admin@techcare.vn",
+    email: "vunthde180740@fpt.edu.vn",
+    password: "hoangvu",
     icon: Shield,
     color: "text-blue-600",
     bg: "bg-blue-100 dark:bg-blue-900/30",
   },
   {
     role: "Lễ tân",
-    email: "letan@techcare.vn",
+    email: "khongten1212004@gmail.com",
+    password: "hoangvu",
     icon: ClipboardList,
     color: "text-purple-600",
     bg: "bg-purple-100 dark:bg-purple-900/30",
   },
   {
     role: "Kỹ thuật",
-    email: "tech@techcare.vn",
+    email: "vuker1212004@gmail.com",
+    password: "hoangvu",
     icon: Wrench,
     color: "text-orange-600",
     bg: "bg-orange-100 dark:bg-orange-900/30",
   },
   {
     role: "Kho",
-    email: "kho@techcare.vn",
+    email: "haitmde180679@fpt.edu.vn",
+    password: "hoangvu",
     icon: Package,
     color: "text-emerald-600",
     bg: "bg-emerald-100 dark:bg-emerald-900/30",
@@ -50,7 +56,7 @@ const DEMO_ACCOUNTS = [
 ];
 
 export const Login: React.FC = () => {
-  const { login } = useAuth(); // Context có hàm login để cập nhật state global
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -58,85 +64,148 @@ export const Login: React.FC = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError("");
+  // States for 2FA (Face)
+  const [step, setStep] = useState<1 | 2>(1);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const scanInterval = useRef<any>(null);
+  const [faceStatus, setFaceStatus] = useState('');
+  const [isFaceSuccess, setIsFaceSuccess] = useState(false);
+  const [loadingCamera, setLoadingCamera] = useState(false);
 
-    console.log("API URL đang gọi:", `${API_BASE_URL}/auth/login`);
-    console.log("Môi trường hiện tại:", import.meta.env.MODE);
-    console.log("VITE_API_URL từ .env:", import.meta.env.VITE_API_URL);
+  useEffect(() => {
+    return () => {
+      if (scanInterval.current) clearInterval(scanInterval.current);
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const handleStep1Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Vui lòng nhập đầy đủ email và mật khẩu");
+      return;
+    }
+    setError("");
+    setStep(2);
+    loadModels();
+  };
+
+  const loadModels = async () => {
+    try {
+      setLoadingCamera(true);
+      setFaceStatus('Đang tải mô hình nhận diện...');
+      const modelUrl = '/models';
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+        faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+        faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl)
+      ]);
+      setFaceStatus('Đang kết nối camera...');
+      startVideo();
+    } catch (err) {
+      setError('Lỗi khi khởi tạo camera. Vui lòng tải lại trang.');
+      setFaceStatus('Lỗi môi trường');
+      setLoadingCamera(false);
+    }
+  };
+
+  const startVideo = () => {
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+      .then((stream) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setLoadingCamera(false);
+        setFaceStatus('Vui lòng nhìn thẳng vào camera...');
+      })
+      .catch((err) => {
+        setError('Không thể truy cập camera. Vui lòng cấp quyền.');
+        setFaceStatus('Lỗi Camera');
+        setLoadingCamera(false);
+      });
+  };
+
+  const handleVideoPlay = () => {
+    if (scanInterval.current) clearInterval(scanInterval.current);
+    scanInterval.current = setInterval(async () => {
+      if (!videoRef.current || isFaceSuccess) return;
+      
+      const detection = await faceapi.detectSingleFace(
+        videoRef.current,
+        new faceapi.TinyFaceDetectorOptions()
+      ).withFaceLandmarks().withFaceDescriptor();
+
+      if (detection && detection.detection.score > 0.8) {
+        clearInterval(scanInterval.current);
+        submitLogin2FA(Array.from(detection.descriptor));
+      }
+    }, 1000);
+  };
+
+  const submitLogin2FA = async (descriptor: number[]) => {
+    setIsFaceSuccess(true);
+    setFaceStatus('Đang xác thực bảo mật 2 lớp...');
+    setIsSubmitting(true);
 
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/auth/login`,
-        { email, password },
-        { withCredentials: true },
+        `${API_BASE_URL}/auth/login-2fa`,
+        { email, password, descriptor },
+        { withCredentials: true }
       );
 
       const { success, token, user } = response.data;
-      console.log("Response từ server:", response.data);
-      console.log("Role thực tế:", user?.role);
-
       if (success) {
-        localStorage.setItem("token", token); // Lưu token để interceptor axios dùng
-        localStorage.setItem("user", JSON.stringify(user)); // Lưu user info
-
-        // Gọi hàm login từ context để cập nhật state toàn cục
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+        
         login({
           id: user.id,
           email: user.email,
           fullName: user.fullName,
           role: user.role,
-          token, // truyền token vào context nếu context cần
+          token,
         });
 
-        console.log("Role nhận được:", user.role);
+        const stream = videoRef.current?.srcObject as MediaStream;
+        stream?.getTracks().forEach(track => track.stop());
 
-        // Điều hướng theo role
         const role = user.role?.toLowerCase();
         switch (role) {
-          case "manager":
-            navigate("/admin");
-            break;
-          case "frontdesk":
-            navigate("/frontdesk");
-            break;
-          case "technician":
-            navigate("/technician");
-            break;
-          case "storekeeper":
-            navigate("/inventory");
-            break;
-          default:
-            navigate("/dashboard");
-            break;
+          case "manager": navigate("/admin"); break;
+          case "frontdesk": navigate("/frontdesk"); break;
+          case "technician": navigate("/technician"); break;
+          case "storekeeper": navigate("/inventory"); break;
+          default: navigate("/dashboard"); break;
         }
       }
     } catch (err: any) {
-      console.error("Login error:", err);
-
-      const message =
-        err.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
-
-      if (err.response?.status === 404) {
-        setError("Email không tồn tại.");
-      } else if (err.response?.status === 401) {
-        setError("Mật khẩu không đúng.");
-      } else if (err.response?.status === 403) {
-        setError("Tài khoản chưa được kích hoạt hoặc bị khóa.");
-      } else {
-        setError(message);
-      }
+      setIsFaceSuccess(false);
+      const message = err.response?.data?.message || "Đăng nhập thất bại.";
+      setError(message);
+      setFaceStatus('Xác thực thất bại');
+      
+      // Khôi phục sau 3 giây để thử quét lại
+      setTimeout(() => {
+        setError("");
+        setFaceStatus('Đang thử lại... Hãy nhìn thẳng!');
+        handleVideoPlay();
+      }, 3000);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const fillCredential = (demoEmail: string) => {
+  const fillCredential = (demoEmail: string, demoPassword: string) => {
     setEmail(demoEmail);
-    setPassword("demo123");
+    setPassword(demoPassword);
     setError("");
+    setStep(1);
+    const stream = videoRef.current?.srcObject as MediaStream;
+    stream?.getTracks().forEach(track => track.stop());
   };
 
   return (
@@ -175,74 +244,116 @@ export const Login: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">
-                Email
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="name@techcare.vn"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Mật khẩu
+          {step === 1 ? (
+            <form onSubmit={handleStep1Submit} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">
+                  Email
                 </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                >
-                  Quên mật khẩu?
-                </Link>
-              </div>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400" />
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    placeholder="name@techcare.vn"
+                  />
                 </div>
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="••••••••"
-                />
               </div>
-            </div>
 
-            {error && (
-              <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 py-2.5 rounded-xl font-medium">
-                {error}
-              </p>
-            )}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Mật khẩu
+                  </label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  >
+                    Quên mật khẩu?
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group disabled:opacity-70"
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  Đăng nhập{" "}
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </>
+              {error && (
+                <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 py-2.5 rounded-xl font-medium">
+                  {error}
+                </p>
               )}
-            </button>
-          </form>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group disabled:opacity-70"
+              >
+                Tiếp tục{" "}
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </form>
+          ) : (
+            <div className="flex flex-col items-center">
+              <p className="text-slate-500 dark:text-slate-400 text-center text-sm mb-4">
+                Tài khoản <strong>{email}</strong> yêu cầu bảo mật 2 lớp.
+                Vui lòng nhìn vào camera.
+              </p>
+
+              {error && (
+                <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 py-2.5 px-4 mb-4 rounded-xl font-medium w-full">
+                  {error}
+                </p>
+              )}
+
+              <div className={`relative w-64 h-64 mb-4 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 mx-auto shadow-inner border-4 transition-all duration-300 ${isFaceSuccess ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'border-indigo-100 dark:border-indigo-800/50'}`}>
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  muted 
+                  playsInline
+                  onPlay={handleVideoPlay}
+                  className="w-full h-full object-cover transform scale-x-[-1]" 
+                />
+                {(loadingCamera || faceStatus) && (
+                  <div className={`absolute bottom-0 left-0 w-full py-2 flex flex-col items-center justify-center font-bold text-xs shadow-lg transition-colors z-20 ${isFaceSuccess ? 'bg-emerald-600 text-white' : 'bg-indigo-600/80 text-white'}`}>
+                    <div className="flex items-center gap-2">
+                      {!isFaceSuccess && <RefreshCw className="animate-spin" size={14} />}
+                      {faceStatus}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const stream = videoRef.current?.srcObject as MediaStream;
+                  stream?.getTracks().forEach(track => track.stop());
+                  setStep(1);
+                  setError("");
+                }}
+                disabled={isSubmitting}
+                className="mt-2 text-sm text-slate-500 hover:text-indigo-600 transition font-semibold"
+              >
+                Quay lại màn hình Mật khẩu
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col justify-center space-y-4 border-t md:border-t-0 md:border-l border-slate-200/60 dark:border-slate-700/60 md:pl-8 pt-6 md:pt-0">
@@ -253,7 +364,7 @@ export const Login: React.FC = () => {
             {DEMO_ACCOUNTS.map((acc) => (
               <button
                 key={acc.email}
-                onClick={() => fillCredential(acc.email)}
+                onClick={() => fillCredential(acc.email, acc.password)}
                 className="flex items-center gap-3 p-3 rounded-2xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all text-left group"
               >
                 <div

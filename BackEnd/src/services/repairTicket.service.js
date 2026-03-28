@@ -39,10 +39,10 @@ async function assignTechnician(ticketId, technicianId, userId) {
 }
 
 async function diagnose(ticketId, data, userId) {
-  console.log('Service diagnose - parameters:');
-  console.log('  ticketId:', ticketId);
-  console.log('  data:', JSON.stringify(data));
-  console.log('  userId:', userId);
+  console.log("Service diagnose - parameters:");
+  console.log("  ticketId:", ticketId);
+  console.log("  data:", JSON.stringify(data));
+  console.log("  userId:", userId);
 
   const ticket = await RepairTicket.findById(ticketId).populate({
     path: "device",
@@ -51,14 +51,22 @@ async function diagnose(ticketId, data, userId) {
 
   if (!ticket) throw new Error("NOT_FOUND");
 
-  console.log('Diagnose check - ticket.technician:', ticket.technician);
-  console.log('Diagnose check - userId:', userId);
-  console.log('Diagnose check - ticket.technician.toString():', ticket.technician?.toString());
-  console.log('Diagnose check - comparison:', ticket.technician?.toString() !== userId);
+  console.log("Diagnose check - ticket.technician:", ticket.technician);
+  console.log("Diagnose check - userId:", userId);
+  console.log(
+    "Diagnose check - ticket.technician.toString():",
+    ticket.technician?.toString(),
+  );
+  console.log(
+    "Diagnose check - comparison:",
+    ticket.technician?.toString() !== userId,
+  );
 
   // Kiểm tra xem user có phải là technician được assign không
   if (!ticket.technician || ticket.technician.toString() !== userId) {
-    throw new Error("UNAUTHORIZED: Chỉ kỹ thuật viên được phân công mới có thể chẩn đoán");
+    throw new Error(
+      "UNAUTHORIZED: Chỉ kỹ thuật viên được phân công mới có thể chẩn đoán",
+    );
   }
 
   ticket.diagnosisResult = data.diagnosisResult;
@@ -75,9 +83,10 @@ async function diagnose(ticketId, data, userId) {
 
   await ticket.save();
 
-  const base = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const base =
+    process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
   if (!process.env.BASE_URL) {
-    console.warn('BASE_URL not set in environment, using', base);
+    console.warn("BASE_URL not set in environment, using", base);
   }
   const approveUrl = `${base}/api/ticket/customer-approve/${ticket.approvalToken}`;
   const rejectUrl = `${base}/api/ticket/customer-reject/${ticket.approvalToken}`;
@@ -85,7 +94,9 @@ async function diagnose(ticketId, data, userId) {
   const customer = ticket.device.customer;
 
   if (!customer?.email) {
-    console.warn(`Ticket ${ticket._id} has no customer email, skipping notification`);
+    console.warn(
+      `Ticket ${ticket._id} has no customer email, skipping notification`,
+    );
   } else {
     const html = approvalTemplate(
       ticket.device.customer.fullName,
@@ -175,18 +186,21 @@ function normalizeTicket(ticket) {
 
   return {
     ...ticket,
-    customerName: customer?.fullName || '',
-    issue: ticket.initialIssue || '',
-    customerPhone: customer?.phone || '',
-    customerEmail: customer?.email || '',
+    customerName: customer?.fullName || "",
+    issue: ticket.initialIssue || "",
+    customerPhone: customer?.phone || "",
+    customerEmail: customer?.email || "",
   };
 }
 
-async function getAllTickets({ limit = 6, sort = "-createdAt" } = {}, currentUser) {
+async function getAllTickets(
+  { limit = 6, sort = "-createdAt" } = {},
+  currentUser,
+) {
   try {
     // Nếu có kỹ thuật viên được truyền vào (phân quyền), chỉ lấy ticket gán cho thằng đó
     const query = {};
-    if (currentUser?.role === 'technician') {
+    if (currentUser?.role === "technician") {
       query.technician = currentUser.userId || currentUser.id;
     }
 
@@ -217,7 +231,11 @@ async function getAllTickets({ limit = 6, sort = "-createdAt" } = {}, currentUse
   }
 }
 
-async function getPublicTickets({ limit = 100, sort = "-createdAt", q = "" } = {}) {
+async function getPublicTickets({
+  limit = 100,
+  sort = "-createdAt",
+  q = "",
+} = {}) {
   try {
     const tickets = await RepairTicket.find()
       .sort(sort)
@@ -249,7 +267,8 @@ async function getPublicTickets({ limit = 100, sort = "-createdAt", q = "" } = {
       const fullName = String(ticket.customerName || "").toLowerCase();
       const phone = String(ticket.customerPhone || "").toLowerCase();
       const email = String(ticket.customerEmail || "").toLowerCase();
-      const deviceInfo = `${ticket.device?.brand || ""} ${ticket.device?.model || ""} ${ticket.device?.deviceType || ""}`.toLowerCase();
+      const deviceInfo =
+        `${ticket.device?.brand || ""} ${ticket.device?.model || ""} ${ticket.device?.deviceType || ""}`.toLowerCase();
 
       return (
         ticketCode.includes(search) ||
@@ -272,6 +291,26 @@ async function getPublicTickets({ limit = 100, sort = "-createdAt", q = "" } = {
   }
 }
 
+async function getManagerSummary() {
+  const [all, completed, rejected] = await Promise.all([
+    RepairTicket.countDocuments(),
+    RepairTicket.countDocuments({ status: 'COMPLETED' }),
+    RepairTicket.countDocuments({ status: 'REJECTED' }),
+  ]);
+
+  const revenueAgg = await RepairTicket.aggregate([
+    { $match: { status: 'COMPLETED' } },
+    { $group: { _id: null, totalRevenue: { $sum: '$finalCost' } } },
+  ]);
+
+  return {
+    totalTickets: all,
+    completedTickets: completed,
+    rejectedTickets: rejected,
+    totalRevenue: revenueAgg[0]?.totalRevenue || 0,
+  };
+}
+
 module.exports = {
   createTicket,
   assignTechnician,
@@ -281,4 +320,5 @@ module.exports = {
   customerReject,
   getAllTickets,
   getPublicTickets,
+  getManagerSummary,
 };
