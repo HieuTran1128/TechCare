@@ -394,15 +394,22 @@ async function completeTicket(ticketId, data, technicianId) {
   ticket.status = 'COMPLETED';
   ticket.completedAt = new Date();
 
+  // Tạo complaint token (hết hạn 7 ngày)
+  ticket.complaintToken = crypto.randomUUID();
+  ticket.complaintTokenExpireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
   appendHistory(ticket, 'COMPLETED', technicianId, 'Đã hoàn tất sửa chữa');
   await ticket.save();
 
   const customer = ticket.device?.customer;
   if (customer?.email) {
+    const frontendUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+    const complaintUrl = `${frontendUrl}/#/complaint/${ticket.complaintToken}`;
     const html = completionTemplate({
       customerName: customer.fullName,
       ticketCode: ticket.ticketCode,
       pickupNote: data.pickupNote,
+      complaintUrl,
     });
 
     await sendMail({

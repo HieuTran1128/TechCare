@@ -1,4 +1,4 @@
-import { LayoutDashboard, Wrench, Package, Settings, HelpCircle, Users, ClipboardList, UserPlus, MessageCircle, ChartColumn, CalendarDays, Banknote, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Wrench, Package, Settings, HelpCircle, Users, ClipboardList, UserPlus, MessageCircle, ChartColumn, CalendarDays, Banknote, ShieldCheck, MessageSquareWarning } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type Role = 'manager' | 'technician' | 'storekeeper' | 'frontdesk';
@@ -22,6 +22,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { label: 'Bảng Lương', path: '/payroll', icon: Banknote, roles: ['manager'] },
   { label: 'Khách hàng', path: '/customer-lookup', icon: Users, roles: ['manager', 'frontdesk'] },
   { label: 'Bảo hành', path: '/warranty', icon: ShieldCheck, roles: ['manager', 'frontdesk'] },
+  { label: 'Khiếu nại', path: '/complaints', icon: MessageSquareWarning, roles: ['manager'] },
   { label: 'Chat nội bộ', path: '/chat', icon: MessageCircle, roles: ['manager', 'technician', 'storekeeper', 'frontdesk'] },
   { label: 'Cài đặt', path: '/settings', icon: Settings, roles: ['manager', 'technician', 'storekeeper', 'frontdesk'] },
 ];
