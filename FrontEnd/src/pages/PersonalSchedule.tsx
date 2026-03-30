@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Calendar as CalendarIcon, Clock, CheckCircle } from 'lucide-react';
-
-interface WorkSchedule {
-  _id: string;
-  date: string;
-  shift: 'morning' | 'afternoon';
-}
-
-const API_BASE = 'http://localhost:3000/api';
+import { scheduleService } from '../services';
+import type { WorkSchedule } from '../services/schedule.service';
 
 export const PersonalSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
@@ -39,16 +32,10 @@ export const PersonalSchedule: React.FC = () => {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/schedules/my`, {
-        withCredentials: true,
-        params: {
-          startDate: next7Days[0],
-          endDate: next7Days[next7Days.length - 1],
-        }
-      });
-      setSchedules(res.data.data);
-    } catch (err) {
-      console.error(err);
+      const data = await scheduleService.getMy(next7Days[0], next7Days[next7Days.length - 1]);
+      setSchedules(data);
+    } catch {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -62,15 +49,9 @@ export const PersonalSchedule: React.FC = () => {
     const isRegistered = hasShift(date, shift);
     try {
       if (isRegistered) {
-        await axios.delete(`${API_BASE}/schedules/cancel`, {
-          withCredentials: true,
-          params: { date, shift }
-        });
+        await scheduleService.cancel(date, shift);
       } else {
-        await axios.post(`${API_BASE}/schedules/register`, {
-          date,
-          shift
-        }, { withCredentials: true });
+        await scheduleService.register(date, shift);
       }
       fetchSchedules();
     } catch (err: any) {

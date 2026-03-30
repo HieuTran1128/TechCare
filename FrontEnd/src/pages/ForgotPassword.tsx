@@ -1,19 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Mail,
-  Lock,
-  KeyRound,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  Loader2,
-  ShieldCheck,
-} from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { Mail, Lock, KeyRound, ArrowRight, ArrowLeft, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { authService } from '../services';
 
 type Step = 'email' | 'otp' | 'reset' | 'success';
 
@@ -35,14 +24,14 @@ export const ForgotPassword: React.FC = () => {
     }
   }, [step]);
 
+  /** Gửi email để nhận OTP, chuyển sang bước nhập OTP nếu thành công. */
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
-
+      await authService.forgotPassword(email);
       setStep('otp');
       setError('');
     } catch (err: any) {
@@ -55,6 +44,7 @@ export const ForgotPassword: React.FC = () => {
     }
   };
 
+  /** Cập nhật ô OTP tại index, tự động focus sang ô tiếp theo khi nhập xong. */
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
 
@@ -67,12 +57,14 @@ export const ForgotPassword: React.FC = () => {
     }
   };
 
+  /** Xử lý phím Backspace trong ô OTP: focus về ô trước nếu ô hiện tại trống. */
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
   };
 
+  /** Xác minh OTP với server, chuyển sang bước đặt lại mật khẩu nếu hợp lệ. */
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -81,11 +73,7 @@ export const ForgotPassword: React.FC = () => {
     const otpValue = otp.join('');
 
     try {
-      await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
-        email,
-        otp: otpValue,
-      });
-
+      await authService.verifyOtp(email, otpValue);
       setStep('reset');
       setError('');
     } catch (err: any) {
@@ -97,6 +85,7 @@ export const ForgotPassword: React.FC = () => {
     }
   };
 
+  /** Đặt lại mật khẩu mới sau khi xác minh OTP, kiểm tra khớp mật khẩu trước khi gửi. */
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -114,12 +103,7 @@ export const ForgotPassword: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/auth/reset-password`, {
-        email,
-        otp: otp.join(''),
-        newPassword: password,
-      });
-
+      await authService.resetPassword(email, otp.join(''), password);
       setStep('success');
       setError('');
     } catch (err: any) {
@@ -232,7 +216,7 @@ export const ForgotPassword: React.FC = () => {
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      ref={(el) => (otpRefs.current[index] = el)}
+                      ref={(el) => { otpRefs.current[index] = el; }}
                       type="text"
                       maxLength={1}
                       className="w-12 h-14 text-center text-xl font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"

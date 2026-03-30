@@ -1,22 +1,9 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Wrench,
-  Mail,
-  Lock,
-  ArrowRight,
-  Loader2,
-  Search,
-  Shield,
-  Package,
-  ClipboardList,
-} from "lucide-react";
+import { Wrench, Mail, Lock, ArrowRight, Loader2, Search, Shield, Package, ClipboardList } from "lucide-react";
 import { motion } from "framer-motion";
-import axios from "axios";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import { authService } from "../services";
 
 const DEMO_ACCOUNTS = [
   {
@@ -67,76 +54,34 @@ export const Login: React.FC = () => {
     setIsSubmitting(true);
     setError("");
 
-    console.log("API URL đang gọi:", `${API_BASE_URL}/auth/login`);
-    console.log("Môi trường hiện tại:", import.meta.env.MODE);
-    console.log("VITE_API_URL từ .env:", import.meta.env.VITE_API_URL);
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/login`,
-        { email, password },
-        { withCredentials: true },
-      );
-
-      const { success, token, user } = response.data;
-      console.log("Response từ server:", response.data);
-      console.log("Role thực tế:", user?.role);
+      const response = await authService.login(email, password);
+      const { success, token, user } = response;
 
       if (success) {
-        localStorage.setItem("token", token); // Lưu token để interceptor axios dùng
-        localStorage.setItem("user", JSON.stringify(user)); // Lưu user info
+        localStorage.setItem("token", token);
+        login({ id: user.id, email: user.email, fullName: user.fullName, role: user.role });
 
-        // Gọi hàm login từ context để cập nhật state toàn cục
-        login({
-          id: user.id,
-          email: user.email,
-          fullName: user.fullName,
-          role: user.role,
-          token, // truyền token vào context nếu context cần
-        });
-
-        console.log("Role nhận được:", user.role);
-
-        // Điều hướng theo role
         const role = user.role?.toLowerCase();
         switch (role) {
-          case "manager":
-            navigate("/admin");
-            break;
-          case "frontdesk":
-            navigate("/frontdesk");
-            break;
-          case "technician":
-            navigate("/technician");
-            break;
-          case "storekeeper":
-            navigate("/inventory");
-            break;
-          default:
-            navigate("/dashboard");
-            break;
+          case "manager": navigate("/admin"); break;
+          case "frontdesk": navigate("/frontdesk"); break;
+          case "technician": navigate("/technician"); break;
+          case "storekeeper": navigate("/inventory"); break;
+          default: navigate("/"); break;
         }
       }
     } catch (err: any) {
-      console.error("Login error:", err);
-
-      const message =
-        err.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
-
-      if (err.response?.status === 404) {
-        setError("Email không tồn tại.");
-      } else if (err.response?.status === 401) {
-        setError("Mật khẩu không đúng.");
-      } else if (err.response?.status === 403) {
-        setError("Tài khoản chưa được kích hoạt hoặc bị khóa.");
-      } else {
-        setError(message);
-      }
+      if (err.response?.status === 404) setError("Email không tồn tại.");
+      else if (err.response?.status === 401) setError("Mật khẩu không đúng.");
+      else if (err.response?.status === 403) setError("Tài khoản chưa được kích hoạt hoặc bị khóa.");
+      else setError(err.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  /** Điền sẵn email và mật khẩu từ tài khoản demo vào form. */
   const fillCredential = (demoEmail: string, demoPassword: string) => {
     setEmail(demoEmail);
     setPassword(demoPassword);

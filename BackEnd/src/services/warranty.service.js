@@ -6,7 +6,9 @@ const StockAlert = require('../models/stockAlert.model');
 const { sendMail } = require('./mail.service');
 const { warrantyCompletionTemplate } = require('../utils/mailTemplates');
 
-// Tạo warranty records sau khi thanh toán xong
+/**
+ * Tạo các bản ghi bảo hành cho linh kiện sau khi phiếu sửa chữa được thanh toán.
+ */
 async function createWarrantiesForTicket(ticketId) {
   const ticket = await RepairTicket.findById(ticketId)
     .populate('repairParts.part')
@@ -41,7 +43,9 @@ async function createWarrantiesForTicket(ticketId) {
   return warranties;
 }
 
-// Lấy danh sách bảo hành
+/**
+ * Lấy danh sách bảo hành, có thể lọc theo mã phiếu, số điện thoại và trạng thái.
+ */
 async function getWarranties({ ticketCode, phone, status } = {}) {
   const filter = {};
   if (status === 'active') filter.isActive = true;
@@ -79,9 +83,9 @@ async function getWarranties({ ticketCode, phone, status } = {}) {
 }
 
 /**
- * Xử lý yêu cầu bảo hành — dùng lại ticket gốc, reset về RECEIVED
- * STORE_FAULT → miễn phí, bỏ qua báo giá
- * CUSTOMER_FAULT → tính phí, đi luồng báo giá bình thường
+ * Xử lý yêu cầu bảo hành — dùng lại ticket gốc, reset về RECEIVED.
+ * STORE_FAULT → miễn phí, bỏ qua báo giá.
+ * CUSTOMER_FAULT → từ chối bảo hành, không động vào ticket.
  */
 async function claimWarranty(warrantyId, { claimType, claimNote }, userId) {
   const warranty = await Warranty.findById(warrantyId)
@@ -152,7 +156,7 @@ async function claimWarranty(warrantyId, { claimType, claimNote }, userId) {
 }
 
 /**
- * Bắt đầu sửa bảo hành STORE_FAULT (sau khi kho duyệt) → bỏ qua báo giá
+ * Bắt đầu sửa bảo hành loại STORE_FAULT sau khi kho duyệt, bỏ qua bước báo giá.
  */
 async function startWarrantyRepair(ticketId, userId) {
   const ticket = await RepairTicket.findById(ticketId);
@@ -167,7 +171,7 @@ async function startWarrantyRepair(ticketId, userId) {
 }
 
 /**
- * Hoàn thành bảo hành STORE_FAULT → gửi mail khách đến lấy
+ * Hoàn thành bảo hành STORE_FAULT, xuất kho linh kiện và gửi email thông báo khách đến lấy.
  */
 async function completeWarrantyTicket(ticketId, { pickupNote }, userId) {
   const ticket = await RepairTicket.findById(ticketId)

@@ -1,5 +1,8 @@
 const { getWarranties, claimWarranty, completeWarrantyTicket, startWarrantyRepair } = require('../services/warranty.service');
 
+/**
+ * Lấy danh sách bảo hành, có thể lọc theo mã phiếu, số điện thoại và trạng thái.
+ */
 exports.getAll = async (req, res) => {
   try {
     const { ticketCode, phone, status } = req.query;
@@ -10,6 +13,9 @@ exports.getAll = async (req, res) => {
   }
 };
 
+/**
+ * Xử lý yêu cầu bảo hành cho một warranty record theo ID.
+ */
 exports.claim = async (req, res) => {
   try {
     const result = await claimWarranty(req.params.id, req.body, req.user.userId);
@@ -20,6 +26,9 @@ exports.claim = async (req, res) => {
   }
 };
 
+/**
+ * Hoàn thành phiếu bảo hành STORE_FAULT và gửi email thông báo khách đến lấy.
+ */
 exports.completeWarranty = async (req, res) => {
   try {
     const ticket = await completeWarrantyTicket(req.params.ticketId, req.body, req.user.userId);
@@ -30,6 +39,9 @@ exports.completeWarranty = async (req, res) => {
   }
 };
 
+/**
+ * Bắt đầu sửa bảo hành STORE_FAULT sau khi kho duyệt linh kiện.
+ */
 exports.startWarranty = async (req, res) => {
   try {
     const ticket = await startWarrantyRepair(req.params.ticketId, req.user.userId);

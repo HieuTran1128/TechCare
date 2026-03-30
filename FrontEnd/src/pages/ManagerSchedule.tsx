@@ -1,22 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
 import { Calendar as CalendarIcon, Users } from 'lucide-react';
-
-interface UserInfo {
-  _id: string;
-  fullName: string;
-  role: string;
-  avatar?: string;
-}
-
-interface WorkSchedule {
-  _id: string;
-  date: string;
-  shift: 'morning' | 'afternoon';
-  userId: UserInfo;
-}
-
-const API_BASE = 'http://localhost:3000/api';
+import { scheduleService } from '../services';
+import type { WorkSchedule } from '../services/schedule.service';
 
 export const ManagerSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
@@ -30,16 +15,10 @@ export const ManagerSchedule: React.FC = () => {
   const fetchAllSchedules = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/schedules`, {
-        withCredentials: true,
-        params: {
-          startDate: selectedDate,
-          endDate: selectedDate, // View Day strictly
-        }
-      });
-      setSchedules(res.data.data);
-    } catch (err) {
-      console.error(err);
+      const data = await scheduleService.getAll(selectedDate, selectedDate);
+      setSchedules(data);
+    } catch {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -70,15 +49,18 @@ export const ManagerSchedule: React.FC = () => {
     return 'bg-slate-100 text-slate-700';
   };
 
-  const StaffCard = ({ s }: { s: WorkSchedule }) => (
-    <div key={s._id} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-      <img src={s.userId.avatar || `https://i.pravatar.cc/150?u=${s.userId._id}`} alt="avatar" className="w-10 h-10 rounded-full border shadow-sm"/>
-      <div>
-        <p className="text-sm font-bold text-slate-800">{s.userId.fullName}</p>
-        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${getRoleColor(s.userId.role)}`}>{s.userId.role}</span>
+  const StaffCard = ({ s }: { s: WorkSchedule }) => {
+    if (!s.userId) return null;
+    return (
+      <div key={s._id} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+        <img src={s.userId.avatar || `https://i.pravatar.cc/150?u=${s.userId._id}`} alt="avatar" className="w-10 h-10 rounded-full border shadow-sm" />
+        <div>
+          <p className="text-sm font-bold text-slate-800">{s.userId.fullName}</p>
+          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${getRoleColor(s.userId.role)}`}>{s.userId.role}</span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">

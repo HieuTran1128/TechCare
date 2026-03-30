@@ -1,3 +1,6 @@
+/**
+ * Middleware xử lý lỗi toàn cục, trả về response JSON phù hợp theo loại lỗi.
+ */
 const errorHandler = (err, req, res, next) => {
   console.error('[Error]', {
     message: err.message,

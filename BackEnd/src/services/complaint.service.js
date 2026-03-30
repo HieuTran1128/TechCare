@@ -3,6 +3,9 @@ const RepairTicket = require('../models/repairTicket.model');
 const { sendMail } = require('./mail.service');
 const { complaintResolutionTemplate } = require('../utils/mailTemplates');
 
+/**
+ * Lấy thông tin form khiếu nại từ complaint token của phiếu sửa chữa.
+ */
 async function getFormByToken(token) {
   const ticket = await RepairTicket.findOne({ complaintToken: token })
     .populate({ path: 'device', populate: { path: 'customer', select: 'fullName email' } })
@@ -25,7 +28,9 @@ async function getFormByToken(token) {
   };
 }
 
-// Khách submit khiếu nại (public)
+/**
+ * Khách hàng gửi khiếu nại thông qua complaint token (public).
+ */
 async function submitComplaint(token, { category, description }) {
   const ticket = await RepairTicket.findOne({ complaintToken: token })
     .populate({ path: 'device', populate: { path: 'customer' } });
@@ -55,7 +60,9 @@ async function submitComplaint(token, { category, description }) {
   return complaint;
 }
 
-// Manager lấy danh sách khiếu nại
+/**
+ * Lấy danh sách khiếu nại có phân trang và lọc theo trạng thái (dành cho manager).
+ */
 async function listComplaints({ status, page = 1, limit = 20 } = {}) {
   const filter = {};
   if (status) filter.status = status;
@@ -83,7 +90,9 @@ async function listComplaints({ status, page = 1, limit = 20 } = {}) {
   return { complaints, total, page: Number(page), limit: Number(limit) };
 }
 
-// Manager lấy chi tiết 1 khiếu nại
+/**
+ * Lấy chi tiết một khiếu nại theo ID, bao gồm thông tin phiếu sửa và khách hàng.
+ */
 async function getComplaintById(id) {
   const complaint = await Complaint.findById(id)
     .populate({
@@ -104,7 +113,9 @@ async function getComplaintById(id) {
   return complaint;
 }
 
-// Manager xử lý và gửi phản hồi
+/**
+ * Xử lý khiếu nại, lưu kết quả giải quyết và gửi email phản hồi cho khách hàng.
+ */
 async function resolveComplaint(id, { resolution, compensationType, compensationAmount }, managerId) {
   const complaint = await Complaint.findById(id)
     .populate('ticket', 'ticketCode')
@@ -147,7 +158,9 @@ async function resolveComplaint(id, { resolution, compensationType, compensation
   return complaint;
 }
 
-// Thống kê nhanh cho dashboard
+/**
+ * Thống kê số lượng khiếu nại theo từng trạng thái.
+ */
 async function getComplaintStats() {
   const [open, inProgress, closed, total] = await Promise.all([
     Complaint.countDocuments({ status: 'OPEN' }),

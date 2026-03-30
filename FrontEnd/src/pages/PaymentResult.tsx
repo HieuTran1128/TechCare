@@ -6,6 +6,7 @@ export const PaymentResult: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  /** Đọc query params từ URL để xác định trạng thái thanh toán và mã phiếu. */
   const { status, ticket } = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return {

@@ -1,7 +1,9 @@
 const WorkSchedule = require('../models/workSchedule.model');
 const UserSalary = require('../models/userSalary')
 
-// Staff registers a shift
+/**
+ * Nhân viên đăng ký ca làm việc theo ngày và ca (sáng/chiều).
+ */
 exports.registerSchedule = async (req, res) => {
   try {
     const { date, shift } = req.body;
@@ -31,7 +33,9 @@ exports.registerSchedule = async (req, res) => {
   }
 };
 
-// Staff deletes a registered shift
+/**
+ * Nhân viên hủy ca làm việc đã đăng ký theo ngày và ca.
+ */
 exports.cancelSchedule = async (req, res) => {
   try {
     const { date, shift } = req.query; // Send from via params or query
@@ -55,7 +59,9 @@ exports.cancelSchedule = async (req, res) => {
   }
 };
 
-// Staff view their own schedules
+/**
+ * Nhân viên xem lịch làm việc của chính mình, có thể lọc theo khoảng thời gian.
+ */
 exports.getMySchedules = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -71,7 +77,9 @@ exports.getMySchedules = async (req, res) => {
   }
 };
 
-// Manager view all schedules
+/**
+ * Manager xem toàn bộ lịch làm việc của tất cả nhân viên, có thể lọc theo khoảng thời gian.
+ */
 exports.getAllSchedules = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;

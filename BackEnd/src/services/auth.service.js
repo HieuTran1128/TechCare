@@ -3,7 +3,9 @@ const bcrypt = require("bcrypt");
 const jwtUtil = require("../utils/jwt.util");
 const mailer = require("../config/mail");
 
-// Kích Hoạt Tài Khoản
+/**
+ * Kích hoạt tài khoản nhân viên bằng invitation token và mật khẩu mới.
+ */
 async function activateAccount(token, password) {
   const user = await User.findOne({
     invitationToken: token,
@@ -33,7 +35,9 @@ async function activateAccount(token, password) {
   return user;
 }
 
-// Đăng Nhập + Cookie
+/**
+ * Đăng nhập bằng email và mật khẩu, trả về thông tin user và JWT token.
+ */
 async function login(email, password) {
   try {
     const user = await User.findOne({ email });
@@ -79,8 +83,9 @@ async function login(email, password) {
   }
 }
 
-
-// Quên Mật Khẩu
+/**
+ * Gửi OTP đặt lại mật khẩu đến email của người dùng.
+ */
 async function forgotPassword(email) {
   const user = await User.findOne({ email });
   if (!user) throw new Error("EMAIL_NOT_FOUND");
@@ -103,7 +108,9 @@ async function forgotPassword(email) {
   });
 }
 
-// Xác Minh OTP
+/**
+ * Xác minh OTP quên mật khẩu của người dùng.
+ */
 async function verifyForgotPasswordOTP(email, otp) {
   const user = await User.findOne({
     email,
@@ -119,7 +126,9 @@ async function verifyForgotPasswordOTP(email, otp) {
   return true;
 }
 
-// Reset Mật Khẩu
+/**
+ * Đặt lại mật khẩu mới sau khi xác minh OTP thành công.
+ */
 async function resetPassword(email, otp, newPassword) {
   const user = await User.findOne({
     email,

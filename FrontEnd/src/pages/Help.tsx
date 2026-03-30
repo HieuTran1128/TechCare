@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, FileText, MessageCircle, Phone } from 'lucide-react';
+import { FileText, MessageCircle, Phone } from 'lucide-react';
 
 export const Help: React.FC = () => {
     return (

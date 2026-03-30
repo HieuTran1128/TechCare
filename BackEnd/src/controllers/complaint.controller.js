@@ -1,8 +1,13 @@
 const service = require('../services/complaint.service');
 
+/**
+ * Gửi response lỗi với status code và message.
+ */
 const sendError = (res, status, message) => res.status(status).json({ message });
 
-// Public: lấy thông tin form từ token
+/**
+ * Lấy thông tin form khiếu nại từ complaint token (public).
+ */
 exports.getForm = async (req, res) => {
   try {
     const data = await service.getFormByToken(req.params.token);
@@ -13,7 +18,9 @@ exports.getForm = async (req, res) => {
   }
 };
 
-// Public: khách submit khiếu nại
+/**
+ * Khách hàng gửi khiếu nại thông qua complaint token (public).
+ */
 exports.submit = async (req, res) => {
   try {
     const complaint = await service.submitComplaint(req.params.token, req.body);
@@ -25,7 +32,9 @@ exports.submit = async (req, res) => {
   }
 };
 
-// Manager: danh sách
+/**
+ * Lấy danh sách khiếu nại có lọc và phân trang (dành cho manager).
+ */
 exports.list = async (req, res) => {
   try {
     const result = await service.listComplaints(req.query);
@@ -35,7 +44,9 @@ exports.list = async (req, res) => {
   }
 };
 
-// Manager: chi tiết
+/**
+ * Lấy chi tiết một khiếu nại theo ID (dành cho manager).
+ */
 exports.detail = async (req, res) => {
   try {
     const complaint = await service.getComplaintById(req.params.id);
@@ -45,7 +56,9 @@ exports.detail = async (req, res) => {
   }
 };
 
-// Manager: xử lý + gửi mail
+/**
+ * Xử lý khiếu nại và gửi email phản hồi cho khách hàng (dành cho manager).
+ */
 exports.resolve = async (req, res) => {
   try {
     const complaint = await service.resolveComplaint(req.params.id, req.body, req.user.userId);
@@ -56,7 +69,9 @@ exports.resolve = async (req, res) => {
   }
 };
 
-// Manager: thống kê
+/**
+ * Lấy thống kê số lượng khiếu nại theo trạng thái (dành cho manager).
+ */
 exports.stats = async (_req, res) => {
   try {
     const stats = await service.getComplaintStats();

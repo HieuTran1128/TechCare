@@ -1,9 +1,15 @@
 const service = require('../services/part.service');
 
+/**
+ * Gửi response lỗi với status code và message cho trước.
+ */
 const sendError = (res, status, message) => {
   res.status(status).json({ message });
 };
 
+/**
+ * Lấy danh sách linh kiện, hỗ trợ lọc theo tồn kho thấp, hết hàng và tìm kiếm.
+ */
 exports.getAll = async (req, res) => {
   try {
     const parts = await service.listParts({
@@ -17,6 +23,9 @@ exports.getAll = async (req, res) => {
   }
 };
 
+/**
+ * Tạo mới một linh kiện.
+ */
 exports.create = async (req, res) => {
   try {
     const part = await service.createPart(req.body);
@@ -26,6 +35,9 @@ exports.create = async (req, res) => {
   }
 };
 
+/**
+ * Cập nhật thông tin linh kiện theo ID.
+ */
 exports.update = async (req, res) => {
   try {
     const part = await service.updatePart(req.params.id, req.body);
@@ -35,6 +47,9 @@ exports.update = async (req, res) => {
   }
 };
 
+/**
+ * Xóa linh kiện theo ID.
+ */
 exports.remove = async (req, res) => {
   try {
     await service.deletePart(req.params.id);
@@ -44,6 +59,9 @@ exports.remove = async (req, res) => {
   }
 };
 
+/**
+ * Nhập kho cho một linh kiện cụ thể theo ID.
+ */
 exports.importStock = async (req, res) => {
   try {
     const part = await service.importStock(req.params.id, req.body, req.user.userId);
@@ -53,6 +71,9 @@ exports.importStock = async (req, res) => {
   }
 };
 
+/**
+ * Tạo đơn nhập kho gồm nhiều linh kiện cùng lúc.
+ */
 exports.importOrder = async (req, res) => {
   try {
     const result = await service.importStockOrder(req.body, req.user.userId);
@@ -62,6 +83,9 @@ exports.importOrder = async (req, res) => {
   }
 };
 
+/**
+ * Lấy lịch sử nhập kho của tất cả linh kiện.
+ */
 exports.getImportHistory = async (_req, res) => {
   try {
     const history = await service.listImportHistory();
@@ -71,6 +95,9 @@ exports.getImportHistory = async (_req, res) => {
   }
 };
 
+/**
+ * Lấy lịch sử xuất kho (sử dụng linh kiện) của tất cả linh kiện.
+ */
 exports.getUsageHistory = async (_req, res) => {
   try {
     const history = await service.listUsageHistory();
@@ -80,6 +107,9 @@ exports.getUsageHistory = async (_req, res) => {
   }
 };
 
+/**
+ * Tạo cảnh báo tồn kho thấp cho một linh kiện.
+ */
 exports.createAlert = async (req, res) => {
   try {
     const alert = await service.createStockAlert(req.params.id, req.body.message, req.user.userId);
@@ -89,6 +119,9 @@ exports.createAlert = async (req, res) => {
   }
 };
 
+/**
+ * Lấy danh sách tất cả cảnh báo tồn kho.
+ */
 exports.getAlerts = async (_req, res) => {
   try {
     const alerts = await service.listStockAlerts();
@@ -98,6 +131,9 @@ exports.getAlerts = async (_req, res) => {
   }
 };
 
+/**
+ * Lấy thống kê tổng quan kho linh kiện.
+ */
 exports.getStats = async (_req, res) => {
   try {
     const stats = await service.getInventoryStats();
@@ -107,6 +143,9 @@ exports.getStats = async (_req, res) => {
   }
 };
 
+/**
+ * Lấy dữ liệu KPI kho linh kiện theo khoảng thời gian.
+ */
 exports.getKPI = async (req, res) => {
   try {
     const { fromDate, toDate } = req.query;

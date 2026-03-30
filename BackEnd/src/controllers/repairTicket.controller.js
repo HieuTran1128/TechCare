@@ -1,9 +1,15 @@
 const service = require('../services/repairTicket.service');
 
+/**
+ * Gửi response lỗi JSON với status code, message và mã lỗi tùy chọn.
+ */
 const sendError = (res, status, message, code = 'error') => {
   res.status(status).json({ error: code, message });
 };
 
+/**
+ * Tạo trang HTML phản hồi quyết định của khách hàng (đồng ý/từ chối báo giá).
+ */
 const renderCustomerDecisionPage = ({
   title,
   subtitle,
@@ -98,6 +104,9 @@ const renderCustomerDecisionPage = ({
 </html>
 `;
 
+/**
+ * Tạo phiếu sửa chữa mới.
+ */
 exports.create = async (req, res) => {
   try {
     const ticket = await service.createTicket(req.body, req.user.userId);
@@ -107,6 +116,9 @@ exports.create = async (req, res) => {
   }
 };
 
+/**
+ * Phân công kỹ thuật viên cho phiếu sửa chữa.
+ */
 exports.assign = async (req, res) => {
   try {
     const ticket = await service.assignTechnician(req.params.id, req.body.technicianId, req.user.userId);
@@ -116,6 +128,9 @@ exports.assign = async (req, res) => {
   }
 };
 
+/**
+ * Kỹ thuật viên gửi yêu cầu linh kiện từ kho hoặc bỏ qua nếu không cần thay linh kiện.
+ */
 exports.requestInventory = async (req, res) => {
   try {
     const ticket = await service.requestInventory(req.params.id, req.body, req.user.userId);
@@ -125,6 +140,9 @@ exports.requestInventory = async (req, res) => {
   }
 };
 
+/**
+ * Thủ kho phản hồi yêu cầu linh kiện (duyệt hoặc từ chối).
+ */
 exports.respondInventory = async (req, res) => {
   try {
     const ticket = await service.respondInventory(req.params.id, req.body, req.user.userId);
@@ -134,6 +152,9 @@ exports.respondInventory = async (req, res) => {
   }
 };
 
+/**
+ * Kỹ thuật viên gửi báo giá sửa chữa cho khách hàng qua email.
+ */
 exports.sendQuotation = async (req, res) => {
   try {
     const ticket = await service.sendQuotation(req.params.id, req.body, req.user.userId);
@@ -143,6 +164,9 @@ exports.sendQuotation = async (req, res) => {
   }
 };
 
+/**
+ * Khách hàng đồng ý báo giá qua link email (public, không cần đăng nhập).
+ */
 exports.customerApprove = async (req, res) => {
   try {
     await service.customerApprove(req.params.token);
@@ -168,6 +192,9 @@ exports.customerApprove = async (req, res) => {
   }
 };
 
+/**
+ * Khách hàng từ chối báo giá qua link email (public, không cần đăng nhập).
+ */
 exports.customerReject = async (req, res) => {
   try {
     await service.customerReject(req.params.token);
@@ -193,6 +220,9 @@ exports.customerReject = async (req, res) => {
   }
 };
 
+/**
+ * Kỹ thuật viên gửi email thông báo kho từ chối linh kiện cho khách hàng.
+ */
 exports.sendInventoryRejection = async (req, res) => {
   try {
     const ticket = await service.sendInventoryRejection(req.params.id, req.body, req.user.userId);
@@ -202,6 +232,9 @@ exports.sendInventoryRejection = async (req, res) => {
   }
 };
 
+/**
+ * Kỹ thuật viên bắt đầu sửa chữa sau khi khách hàng đồng ý báo giá.
+ */
 exports.startRepair = async (req, res) => {
   try {
     const ticket = await service.startRepair(req.params.id, req.user.userId);
@@ -211,6 +244,9 @@ exports.startRepair = async (req, res) => {
   }
 };
 
+/**
+ * Kỹ thuật viên hoàn tất sửa chữa, trừ kho linh kiện và gửi email thông báo khách hàng.
+ */
 exports.complete = async (req, res) => {
   try {
     const ticket = await service.completeTicket(req.params.id, req.body, req.user.userId);
@@ -220,6 +256,9 @@ exports.complete = async (req, res) => {
   }
 };
 
+/**
+ * Tìm phiếu sửa chữa theo mã phiếu chính xác (dùng cho tra cứu công khai).
+ */
 exports.findByCode = async (req, res) => {
   try {
     const ticket = await service.findTicketByCode(req.query.ticketCode);
@@ -229,6 +268,9 @@ exports.findByCode = async (req, res) => {
   }
 };
 
+/**
+ * Tìm kiếm gợi ý danh sách phiếu theo từ khóa mã phiếu.
+ */
 exports.searchByCode = async (req, res) => {
   try {
     const data = await service.searchTicketsByCodeKeyword(req.query.keyword, req.query.limit);
@@ -238,6 +280,9 @@ exports.searchByCode = async (req, res) => {
   }
 };
 
+/**
+ * Tạo link thanh toán PayOS cho phiếu sửa chữa đã hoàn thành.
+ */
 exports.createPayosPayment = async (req, res) => {
   try {
     const result = await service.createPayosPayment(req.params.id, req.user.userId);
@@ -247,6 +292,9 @@ exports.createPayosPayment = async (req, res) => {
   }
 };
 
+/**
+ * Đánh dấu phiếu đã thanh toán (tiền mặt hoặc PayOS).
+ */
 exports.markPaid = async (req, res) => {
   try {
     const ticket = await service.markTicketAsPaid(req.params.id, req.body, req.user.userId);
@@ -256,6 +304,9 @@ exports.markPaid = async (req, res) => {
   }
 };
 
+/**
+ * Nhận và xử lý webhook từ PayOS để xác nhận thanh toán thành công.
+ */
 exports.payosWebhook = async (req, res) => {
   try {
     const result = await service.handlePayosWebhook(req.body);
@@ -265,6 +316,9 @@ exports.payosWebhook = async (req, res) => {
   }
 };
 
+/**
+ * Lấy danh sách tất cả phiếu sửa chữa, hỗ trợ lọc theo trạng thái và kỹ thuật viên.
+ */
 exports.getAll = async (req, res) => {
   try {
     const result = await service.getAllTickets(
@@ -283,6 +337,9 @@ exports.getAll = async (req, res) => {
   }
 };
 
+/**
+ * Lấy thống kê tổng quan cho manager: tổng phiếu, hoàn thành, từ chối, doanh thu và chi phí bảo hành.
+ */
 exports.getManagerSummary = async (req, res) => {
   try {
     const summary = await service.getManagerSummary();

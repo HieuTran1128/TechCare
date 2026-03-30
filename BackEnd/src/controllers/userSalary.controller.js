@@ -3,6 +3,9 @@ const User = require('../models/user.model')
 const WorkSchedule = require('../models/workSchedule.model')
 const UserSalary = require('../models/userSalary')
 
+/**
+ * Nhân viên xem bảng lương của chính mình theo khoảng thời gian.
+ */
 exports.getMySalary = async (req, res) => {
   try {
     const { startDate, endDate } = req.query; // YYYY-MM-DD
@@ -17,6 +20,9 @@ exports.getMySalary = async (req, res) => {
   }
 };
 
+/**
+ * Manager xem bảng lương của một nhân viên cụ thể theo khoảng thời gian.
+ */
 exports.getUserSalaryByManager = async (req, res) => {
     try {
       const { userId, startDate, endDate } = req.query;
@@ -27,6 +33,9 @@ exports.getUserSalaryByManager = async (req, res) => {
     }
 };
 
+/**
+ * Lấy bảng lương tổng hợp của tất cả nhân viên, có thể lọc theo khoảng thời gian.
+ */
 exports.getAllSalaries = async (req, res) => {
     try {
         // Lấy điều kiện thời gian (nếu có filter theo tháng trên UI)
@@ -72,7 +81,9 @@ exports.getAllSalaries = async (req, res) => {
     }
 };
 
-// Cập nhật mức lương theo giờ (Khi ấn nút "Lưu thay đổi" trên Modal UI)
+/**
+ * Cập nhật mức lương theo giờ của một nhân viên (upsert nếu chưa có bản ghi).
+ */
 exports.updateSalary = async (req, res) => {
     try {
         const { userId } = req.params;

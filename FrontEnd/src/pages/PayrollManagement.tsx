@@ -1,19 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Search, Edit2, Save, X, DollarSign, Clock } from 'lucide-react';
+import { Search, Edit2, Save, X, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-interface EmployeeSalary {
-    userId: string;
-    fullName: string;
-    role: string;
-    totalShifts: number;
-    totalHours: number;
-    hourlyRate: number;
-    totalEarnings: number;
-}
-
-const API_BASE = 'http://localhost:3000/api'; // Đảm bảo đúng với port backend của bạn
+import { salaryService } from '../services';
+import type { EmployeeSalary } from '../services/salary.service';
 
 export const PayrollManagement: React.FC = () => {
     const [salaries, setSalaries] = useState<EmployeeSalary[]>([]);
@@ -31,15 +20,9 @@ export const PayrollManagement: React.FC = () => {
     const fetchSalaries = async () => {
         setLoading(true);
         try {
-            // Lấy token nếu hệ thống của bạn dùng JWT lưu ở localStorage
-            const token = localStorage.getItem('token'); 
-            const response = await axios.get(`${API_BASE}/salary`, {
-                withCredentials: true, // Thêm dòng này nếu bạn dùng cookie
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
-            });
-            setSalaries(response.data.data);
+            const data = await salaryService.getAll();
+            setSalaries(data);
         } catch (error: any) {
-            console.error(error);
             toast.error(error.response?.data?.message || 'Lỗi khi tải bảng lương');
         } finally {
             setLoading(false);
@@ -53,34 +36,17 @@ export const PayrollManagement: React.FC = () => {
 
     const handleSaveEdit = async () => {
         if (!editingUser) return;
-
         try {
-            const token = localStorage.getItem('token');
-            // Gọi API Update hourlyRate
-            await axios.put(`${API_BASE}/salary/${editingUser.userId}`, 
-                { hourlyRate: editRate },
-                { 
-                    withCredentials: true,
-                    headers: token ? { Authorization: `Bearer ${token}` } : {} 
-                }
-            );
-
-            // Cập nhật lại UI ngay lập tức không cần load lại trang
+            await salaryService.updateRate(editingUser.userId, editRate);
             setSalaries(prev => prev.map(s => {
                 if (s.userId === editingUser.userId) {
-                    return {
-                        ...s,
-                        hourlyRate: editRate,
-                        totalEarnings: editRate * s.totalHours
-                    };
+                    return { ...s, hourlyRate: editRate, totalEarnings: editRate * s.totalHours };
                 }
                 return s;
             }));
-
             toast.success(`Đã cập nhật lương cho ${editingUser.fullName}`);
             setEditingUser(null);
         } catch (error: any) {
-            console.error(error);
             toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật!');
         }
     };

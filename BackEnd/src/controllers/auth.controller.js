@@ -1,6 +1,8 @@
 const authService = require("../services/auth.service");
 
-// Kích Hoạt Tài Khoản
+/**
+ * Kích hoạt tài khoản nhân viên bằng invitation token và mật khẩu mới.
+ */
 exports.activate = async (req, res) => {
   const { token, password } = req.body;
 
@@ -15,7 +17,9 @@ exports.activate = async (req, res) => {
   res.json({ message: "Account activated" });
 };
 
-// Đăng Nhập + Cookie
+/**
+ * Đăng nhập bằng email và mật khẩu, trả về JWT token qua cookie và response body.
+ */
 exports.login = async (req, res, next) => {
   try {
     console.log('[Auth] Login attempt:', req.body);
@@ -57,13 +61,17 @@ exports.login = async (req, res, next) => {
   }
 };
 
-// Quên Mật Khẩu
+/**
+ * Gửi OTP đặt lại mật khẩu đến email người dùng.
+ */
 exports.forgotPassword = async (req, res) => {
   await authService.forgotPassword(req.body.email);
   res.json({ message: "OTP sent to email" });
 };
 
-// Xác Minh OTP
+/**
+ * Xác minh OTP quên mật khẩu.
+ */
 exports.verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -72,7 +80,9 @@ exports.verifyOtp = async (req, res) => {
   res.json({ message: 'OTP valid' });
 };
 
-// Reset Mật Khẩu
+/**
+ * Đặt lại mật khẩu mới sau khi xác minh OTP thành công.
+ */
 exports.resetPassword = async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
@@ -81,7 +91,9 @@ exports.resetPassword = async (req, res) => {
   res.json({ message: 'Password reset successfully' });
 };
 
-// Đăng Xuất
+/**
+ * Đăng xuất người dùng bằng cách xóa cookie access_token.
+ */
 exports.logout = async (req, res) => {
   res.clearCookie('access_token');
   res.json({ message: 'Logout success' });

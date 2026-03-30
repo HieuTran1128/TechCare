@@ -5,12 +5,18 @@ const ImportOrder = require('../models/importOrder.model');
 const ImportItem = require('../models/importItem.model');
 const Supplier = require('../models/supplier.model');
 
+/**
+ * Tạo mã lô hàng ngẫu nhiên dạng LO-XXXXX-XXXXXX.
+ */
 function generateBatchCode() {
   const stamp = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `LO-${stamp}-${rand}`;
 }
 
+/**
+ * Lấy danh sách linh kiện, hỗ trợ lọc tồn kho thấp, hết hàng và tìm kiếm theo tên/thương hiệu.
+ */
 async function listParts({ lowStock, outOfStock, search }) {
   const query = {};
 
@@ -30,6 +36,9 @@ async function listParts({ lowStock, outOfStock, search }) {
   return Part.find(query).sort({ createdAt: -1 });
 }
 
+/**
+ * Tạo mới một linh kiện, yêu cầu tên và URL ảnh.
+ */
 async function createPart(data) {
   if (!data.partName || !data.imageUrl) {
     throw new Error('PART_REQUIRED_FIELDS_MISSING');
@@ -46,6 +55,9 @@ async function createPart(data) {
   });
 }
 
+/**
+ * Cập nhật thông tin linh kiện theo ID (không cho phép thay đổi stock trực tiếp).
+ */
 async function updatePart(id, data) {
   const updateData = { ...data };
   delete updateData.stock;
@@ -55,12 +67,18 @@ async function updatePart(id, data) {
   return part;
 }
 
+/**
+ * Xóa linh kiện theo ID.
+ */
 async function deletePart(id) {
   const part = await Part.findByIdAndDelete(id);
   if (!part) throw new Error('PART_NOT_FOUND');
   return part;
 }
 
+/**
+ * Nhập kho cho một linh kiện: cập nhật số lượng, tạo đơn nhập và ghi giao dịch kho.
+ */
 async function importStock(partId, data, userId) {
   const quantity = Number(data.quantity || 0);
   const importPrice = Number(data.importPrice || 0);
@@ -114,6 +132,9 @@ async function importStock(partId, data, userId) {
   return part;
 }
 
+/**
+ * Tạo đơn nhập kho gồm nhiều linh kiện cùng lúc từ một nhà cung cấp.
+ */
 async function importStockOrder(data, userId) {
   const supplierId = data.supplierId;
   const items = Array.isArray(data.items) ? data.items : [];
@@ -180,6 +201,9 @@ async function importStockOrder(data, userId) {
   };
 }
 
+/**
+ * Lấy lịch sử nhập kho của tất cả linh kiện, kèm thông tin nhà cung cấp và người tạo.
+ */
 async function listImportHistory() {
   const items = await ImportItem.find()
     .populate({
@@ -206,6 +230,9 @@ async function listImportHistory() {
   }));
 }
 
+/**
+ * Lấy lịch sử xuất kho (sử dụng linh kiện trong phiếu sửa chữa).
+ */
 async function listUsageHistory() {
   const transactions = await InventoryTransaction.find({ type: 'OUT' })
     .populate('part', 'partName brand price')
@@ -225,6 +252,9 @@ async function listUsageHistory() {
   }));
 }
 
+/**
+ * Tạo cảnh báo tồn kho thấp cho một linh kiện.
+ */
 async function createStockAlert(partId, message, userId) {
   if (!message) throw new Error('MESSAGE_REQUIRED');
 
@@ -238,6 +268,9 @@ async function createStockAlert(partId, message, userId) {
   });
 }
 
+/**
+ * Lấy danh sách tất cả cảnh báo tồn kho, kèm thông tin linh kiện và người tạo.
+ */
 async function listStockAlerts() {
   return StockAlert.find()
     .populate('part', 'partName brand stock minStock imageUrl')
@@ -245,6 +278,9 @@ async function listStockAlerts() {
     .sort({ createdAt: -1 });
 }
 
+/**
+ * Lấy thống kê tổng quan kho: tổng linh kiện, tổng số lượng, số loại tồn thấp và hết hàng.
+ */
 async function getInventoryStats() {
   const [totalParts, totalQuantity, lowStockCount, outOfStockCount] = await Promise.all([
     Part.countDocuments(),
@@ -261,6 +297,9 @@ async function getInventoryStats() {
   };
 }
 
+/**
+ * Tính toán KPI kho linh kiện theo khoảng thời gian: doanh thu, chi phí, lợi nhuận, top linh kiện và biểu đồ theo tháng.
+ */
 async function getInventoryKPI({ fromDate, toDate } = {}) {
   const from = fromDate ? new Date(fromDate) : null;
   const to = toDate ? new Date(toDate) : null;
