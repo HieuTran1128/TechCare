@@ -10,12 +10,18 @@ const { approvalTemplate, completionTemplate, inventoryRejectedTemplate } = requ
 const ROLES = require('../constants/roles.constant');
 const { createWarrantiesForTicket } = require('./warranty.service');
 
+/**
+ * Tạo mã phiếu sửa chữa dạng TC-YYYY-XXXXXX.
+ */
 function generateTicketCode() {
   const year = new Date().getFullYear();
   const random = Math.floor(100000 + Math.random() * 900000);
   return `TC-${year}-${random}`;
 }
 
+/**
+ * Khởi tạo client PayOS từ biến môi trường, ném lỗi nếu thiếu cấu hình.
+ */
 function createPayosClient() {
   const clientId = process.env.PAYOS_CLIENT_ID;
   const apiKey = process.env.PAYOS_API_KEY;
@@ -28,12 +34,18 @@ function createPayosClient() {
   return new PayOS(clientId, apiKey, checksumKey);
 }
 
+/**
+ * Tạo mã orderCode số nguyên 10 chữ số từ timestamp và mã phiếu để dùng với PayOS.
+ */
 function normalizeOrderCodeFromTicket(ticket) {
   const ts = Date.now().toString().slice(-10);
   const ticketTail = String(ticket.ticketCode || ticket._id).replace(/\D/g, '').slice(-6) || '000001';
   return Number(`${ts.slice(0, 4)}${ticketTail.padStart(6, '0')}`.slice(0, 10));
 }
 
+/**
+ * Thêm một bản ghi vào lịch sử trạng thái của phiếu sửa chữa.
+ */
 function appendHistory(ticket, status, changedBy, note) {
   ticket.statusHistory.push({
     status,
@@ -43,6 +55,9 @@ function appendHistory(ticket, status, changedBy, note) {
   });
 }
 
+/**
+ * Tạo phiếu sửa chữa mới với trạng thái RECEIVED.
+ */
 async function createTicket(data, userId) {
   const ticket = await RepairTicket.create({
     ticketCode: generateTicketCode(),
@@ -60,6 +75,9 @@ async function createTicket(data, userId) {
   return ticket;
 }
 
+/**
+ * Phân công kỹ thuật viên cho phiếu sửa chữa, chuyển trạng thái sang DIAGNOSING.
+ */
 async function assignTechnician(ticketId, technicianId, managerId) {
   const [ticket, technician] = await Promise.all([
     RepairTicket.findById(ticketId),
@@ -80,6 +98,9 @@ async function assignTechnician(ticketId, technicianId, managerId) {
   return ticket;
 }
 
+/**
+ * Kỹ thuật viên gửi yêu cầu kiểm tra linh kiện kho hoặc xác nhận không cần linh kiện.
+ */
 async function requestInventory(ticketId, data, technicianId) {
   const ticket = await RepairTicket.findById(ticketId);
   if (!ticket) throw new Error('NOT_FOUND');
@@ -117,6 +138,9 @@ async function requestInventory(ticketId, data, technicianId) {
   return ticket;
 }
 
+/**
+ * Thủ kho phản hồi yêu cầu linh kiện: duyệt hoặc từ chối.
+ */
 async function respondInventory(ticketId, data, storekeeperId) {
   const ticket = await RepairTicket.findById(ticketId);
   if (!ticket) throw new Error('NOT_FOUND');
@@ -138,6 +162,9 @@ async function respondInventory(ticketId, data, storekeeperId) {
   return ticket;
 }
 
+/**
+ * Kỹ thuật viên gửi báo giá cho khách hàng qua email kèm link xác nhận/từ chối.
+ */
 async function sendQuotation(ticketId, data, technicianId) {
   const ticket = await RepairTicket.findById(ticketId)
     .populate({
@@ -238,6 +265,9 @@ async function sendQuotation(ticketId, data, technicianId) {
   return ticket;
 }
 
+/**
+ * Xử lý khi khách hàng đồng ý báo giá qua link email.
+ */
 async function customerApprove(token) {
   const cleanToken = decodeURIComponent(String(token || '')).trim().replace(/[.\s]+$/g, '');
   const ticket = await RepairTicket.findOne({ approvalToken: cleanToken });
@@ -261,6 +291,9 @@ async function customerApprove(token) {
   return ticket;
 }
 
+/**
+ * Xử lý khi khách hàng từ chối báo giá qua link email.
+ */
 async function customerReject(token) {
   const cleanToken = decodeURIComponent(String(token || '')).trim().replace(/[.\s]+$/g, '');
   const ticket = await RepairTicket.findOne({ approvalToken: cleanToken });
@@ -284,6 +317,9 @@ async function customerReject(token) {
   return ticket;
 }
 
+/**
+ * Gửi email thông báo cho khách hàng khi kho từ chối cung cấp linh kiện.
+ */
 async function sendInventoryRejection(ticketId, data, technicianId) {
   const ticket = await RepairTicket.findById(ticketId).populate({
     path: 'device',
@@ -321,6 +357,9 @@ async function sendInventoryRejection(ticketId, data, technicianId) {
   return ticket;
 }
 
+/**
+ * Bắt đầu quá trình sửa chữa, chuyển trạng thái phiếu sang IN_PROGRESS.
+ */
 async function startRepair(ticketId, technicianId) {
   const ticket = await RepairTicket.findById(ticketId);
   if (!ticket) throw new Error('NOT_FOUND');
@@ -335,6 +374,9 @@ async function startRepair(ticketId, technicianId) {
   return ticket;
 }
 
+/**
+ * Hoàn tất sửa chữa: trừ kho linh kiện, ghi giao dịch, gửi email thông báo khách hàng.
+ */
 async function completeTicket(ticketId, data, technicianId) {
   const ticket = await RepairTicket.findById(ticketId).populate({
     path: 'device',
@@ -422,6 +464,9 @@ async function completeTicket(ticketId, data, technicianId) {
   return ticket;
 }
 
+/**
+ * Tìm phiếu sửa chữa theo mã phiếu chính xác hoặc gần đúng (case-insensitive).
+ */
 async function findTicketByCode(ticketCode) {
   if (!ticketCode) throw new Error('TICKET_CODE_REQUIRED');
 
@@ -449,6 +494,9 @@ async function findTicketByCode(ticketCode) {
   return ticket;
 }
 
+/**
+ * Tìm kiếm gợi ý danh sách phiếu theo từ khóa mã phiếu, giới hạn số kết quả trả về.
+ */
 async function searchTicketsByCodeKeyword(keyword, limit = 8) {
   const q = String(keyword || '').trim();
   if (!q) return [];
@@ -467,6 +515,9 @@ async function searchTicketsByCodeKeyword(keyword, limit = 8) {
     .lean();
 }
 
+/**
+ * Đánh dấu phiếu đã thanh toán (tiền mặt hoặc PayOS), chuyển trạng thái sang PAYMENTED.
+ */
 async function markTicketAsPaid(ticketId, { paymentMethod, orderCode }, frontdeskId) {
   const ticket = await RepairTicket.findById(ticketId);
   if (!ticket) throw new Error('NOT_FOUND');
@@ -506,8 +557,11 @@ async function markTicketAsPaid(ticketId, { paymentMethod, orderCode }, frontdes
   return ticket;
 }
 
-async function createPayosPayment(ticketId, frontdeskId) {
-  const ticket = await RepairTicket.findById(ticketId).populate({
+/**
+ * Tạo link thanh toán PayOS cho phiếu sửa chữa đã hoàn thành.
+ */
+async function createPayosPayment(ticketId, frontdeskId) {  // tìm ticket cần thanh toán
+  const ticket = await RepairTicket.findById(ticketId).populate({   
     path: 'device',
     populate: { path: 'customer', select: 'fullName email' },
   });
@@ -515,8 +569,8 @@ async function createPayosPayment(ticketId, frontdeskId) {
   if (!ticket) throw new Error('NOT_FOUND');
   if (ticket.status !== 'COMPLETED') throw new Error('INVALID_STATUS_TO_PAY');
 
-  const payos = createPayosClient();
-  const amount = Math.max(0, Math.round(Number(ticket.finalCost || ticket.quote?.estimatedCost || 0)));
+  const payos = createPayosClient();   //khai báo payos
+  const amount = Math.max(0, Math.round(Number(ticket.finalCost || ticket.quote?.estimatedCost || 0))); //tính tiền
   if (!amount) throw new Error('INVALID_PAYMENT_AMOUNT');
 
   const frontendUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
@@ -564,6 +618,9 @@ async function createPayosPayment(ticketId, frontdeskId) {
   };
 }
 
+/**
+ * Xử lý webhook từ PayOS: xác minh chữ ký và cập nhật trạng thái thanh toán phiếu.
+ */
 async function handlePayosWebhook(webhookPayload) {
   const payos = createPayosClient();
   const verified = await payos.webhooks.verify(webhookPayload);
@@ -605,6 +662,9 @@ async function handlePayosWebhook(webhookPayload) {
   return { ok: true, paid: true };
 }
 
+/**
+ * Lấy danh sách tất cả phiếu sửa chữa, hỗ trợ lọc theo trạng thái, kỹ thuật viên và phân quyền.
+ */
 async function getAllTickets(query = {}, user = null) {
   const { limit = 100, sort = '-createdAt', technicianId, status } = query;
 
@@ -721,6 +781,9 @@ async function getAllTickets(query = {}, user = null) {
   };
 }
 
+/**
+ * Lấy thống kê tổng quan cho manager: tổng phiếu, hoàn thành, từ chối, doanh thu và chi phí bảo hành.
+ */
 async function getManagerSummary() {
   const [all, completed, rejected, warrantyDone] = await Promise.all([
     RepairTicket.countDocuments(),

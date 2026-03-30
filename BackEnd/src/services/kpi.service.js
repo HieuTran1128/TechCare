@@ -1,5 +1,8 @@
 const RepairTicket = require('../models/repairTicket.model');
 
+/**
+ * Phân tích và chuyển đổi chuỗi ngày thành đối tượng Date, kiểm tra tính hợp lệ.
+ */
 function parseDateRange(startDate, endDate) {
   const start = startDate ? new Date(startDate) : null;
   const end = endDate ? new Date(endDate) : null;
@@ -15,6 +18,9 @@ function parseDateRange(startDate, endDate) {
   return { start, end };
 }
 
+/**
+ * Tạo điều kiện lọc theo khoảng ngày cho MongoDB query.
+ */
 function buildDateMatch(start, end) {
   if (!start && !end) return {};
 
@@ -29,6 +35,9 @@ function buildDateMatch(start, end) {
   return { createdAt: match };
 }
 
+/**
+ * Trả về biểu thức MongoDB để nhóm dữ liệu theo tuần hoặc tháng.
+ */
 function getPeriodExpression(groupBy) {
   if (groupBy === 'month') {
     return {
@@ -55,6 +64,9 @@ function getPeriodExpression(groupBy) {
   };
 }
 
+/**
+ * Tính toán KPI theo kỹ thuật viên và khoảng thời gian, bao gồm doanh thu, tỷ lệ hoàn thành và thời gian xử lý trung bình.
+ */
 async function getKpi({ startDate, endDate, groupBy = 'week' }) {
   if (!['week', 'month'].includes(groupBy)) {
     throw new Error('groupBy chỉ chấp nhận week hoặc month');

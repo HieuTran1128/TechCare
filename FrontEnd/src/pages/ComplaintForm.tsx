@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+import { authService } from '../services';
 
 const CATEGORIES = [
   { value: 'SERVICE_QUALITY', label: 'Chất lượng dịch vụ' },
@@ -25,8 +23,8 @@ export const ComplaintForm: React.FC = () => {
 
   useEffect(() => {
     if (!token) { setState('error'); return; }
-    axios.get(`${API_BASE}/complaints/form/${token}`)
-      .then((res) => { setInfo(res.data); setState('ready'); })
+    authService.getComplaintForm(token)
+      .then((data) => { setInfo(data); setState('ready'); })
       .catch((err) => {
         const msg = err.response?.data?.message;
         if (msg === 'TOKEN_EXPIRED') setState('expired');
@@ -35,6 +33,7 @@ export const ComplaintForm: React.FC = () => {
       });
   }, [token]);
 
+  /** Gửi khiếu nại lên server, validate trước khi submit. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (categories.length === 0) { setErrorMsg('Vui lòng chọn ít nhất một loại khiếu nại.'); return; }
@@ -42,8 +41,8 @@ export const ComplaintForm: React.FC = () => {
     setErrorMsg('');
     setState('submitting');
     try {
-      const res = await axios.post(`${API_BASE}/complaints/submit/${token}`, { category: categories, description });
-      setComplaintCode(res.data.complaintCode);
+      const res = await authService.submitComplaint(token!, { category: categories, description });
+      setComplaintCode(res.complaintCode);
       setState('success');
     } catch (err: any) {
       const msg = err.response?.data?.message;
@@ -53,6 +52,7 @@ export const ComplaintForm: React.FC = () => {
     }
   };
 
+  /** Toggle chọn/bỏ chọn một loại khiếu nại trong danh sách categories. */
   const toggleCategory = (val: string) => {
     setCategories((prev) =>
       prev.includes(val) ? prev.filter((c) => c !== val) : [...prev, val]

@@ -1,7 +1,6 @@
-import axios from 'axios';
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { authService } from '../services';
 
 export interface User {
   id: string;
@@ -29,14 +28,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('techcare_user');
-    axios.post(`${API_BASE}/auth/logout`, {}, { withCredentials: true }).catch(() => undefined);
+    authService.logout();
   }, []);
 
   const fetchUserProfile = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get(`${API_BASE}/users/me`, { withCredentials: true });
-      const freshUser = res.data as User;
+      const freshUser = await authService.getProfile() as User;
       setUser(freshUser);
       localStorage.setItem('techcare_user', JSON.stringify(freshUser));
     } catch (err: any) {
@@ -50,11 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const stored = localStorage.getItem('techcare_user');
-    if (!stored) {
-      setIsLoading(false);
-      return;
-    }
-
+    if (!stored) { setIsLoading(false); return; }
     try {
       setUser(JSON.parse(stored));
     } catch {
@@ -70,15 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateAvatar = async (file: File) => {
-    const formData = new FormData();
-    formData.append('avatar', file);
-
-    const res = await axios.post(`${API_BASE}/users/avatar`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      withCredentials: true,
-    });
-
-    const newAvatar = res.data.avatar;
+    const newAvatar = await authService.updateAvatar(file);
     setUser((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, avatar: newAvatar };

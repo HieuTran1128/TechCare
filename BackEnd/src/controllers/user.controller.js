@@ -1,6 +1,9 @@
 const userService = require('../services/user.service');
 const User = require('../models/user.model');
 
+/**
+ * Tạo tài khoản nhân viên mới và gửi email mời kích hoạt.
+ */
 exports.createUser = async (req, res, next) => {
   try {
     await userService.createStaff(req.body);
@@ -13,6 +16,9 @@ exports.createUser = async (req, res, next) => {
   }
 };
 
+/**
+ * Tạo nhiều tài khoản nhân viên cùng lúc từ danh sách staffList.
+ */
 exports.createUserBulk = async (req, res, next) => {
   try {
     const results = await userService.createStaffBulk(req.body.staffList);
@@ -28,6 +34,9 @@ exports.createUserBulk = async (req, res, next) => {
   }
 };
 
+/**
+ * Upload và cập nhật ảnh đại diện cho người dùng hiện tại.
+ */
 exports.updateAvatar = async (req, res) => {
   const avatarUrl = await userService.uploadAvatar(
     req.user.userId,
@@ -40,6 +49,9 @@ exports.updateAvatar = async (req, res) => {
   });
 };
 
+/**
+ * Lấy danh sách tất cả nhân viên, có thể lọc theo role.
+ */
 exports.getAllUsers = async (req, res) => {
   console.log('\n========== getAllUsers CONTROLLER ==========');
   console.log('Timestamp:', new Date().toISOString());
@@ -84,6 +96,9 @@ exports.getAllUsers = async (req, res) => {
   console.log('========== END getAllUsers ==========\n');
 };
 
+/**
+ * Cập nhật thông tin cá nhân (họ tên, số điện thoại) của người dùng hiện tại.
+ */
 exports.updateProfile = async (req, res, next) => {
   try {
     const updated = await userService.updateProfile(req.user.userId, req.body);
@@ -102,6 +117,9 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
+/**
+ * Đổi mật khẩu người dùng hiện tại sau khi xác minh mật khẩu cũ.
+ */
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body || {};
@@ -132,6 +150,9 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+/**
+ * Xóa tài khoản nhân viên theo ID (không cho phép xóa manager hoặc chính mình).
+ */
 exports.deleteUser = async (req, res) => {
   try {
     await userService.removeUser(req.user.userId, req.params.id);
@@ -141,6 +162,9 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * Khóa hoặc mở khóa tài khoản nhân viên theo ID.
+ */
 exports.toggleBlockUser = async (req, res) => {
   try {
     const { blocked } = req.body;
@@ -157,6 +181,9 @@ exports.toggleBlockUser = async (req, res) => {
   }
 };
 
+/**
+ * Lấy thông tin người dùng hiện đang đăng nhập.
+ */
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-passwordHash -invitationToken -forgotPasswordOTP');

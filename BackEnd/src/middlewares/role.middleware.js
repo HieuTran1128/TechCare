@@ -1,3 +1,7 @@
+/**
+ * Middleware kiểm tra quyền truy cập dựa trên danh sách role được phép.
+ * Trả về 403 nếu role của user không nằm trong danh sách cho phép.
+ */
 module.exports = (...roles) => {
   return (req, res, next) => {
     console.log('[RoleMiddleware] Checking authorization');
@@ -6,7 +10,7 @@ module.exports = (...roles) => {
     const normalizedRoles = roles.map(r => (typeof r === 'string' ? r.toLowerCase() : r));
     console.log('[RoleMiddleware] User role (normalized):', userRole);
     console.log('[RoleMiddleware] Normalized required roles:', normalizedRoles);
-    
+
     if (!normalizedRoles.includes(userRole)) {
       console.log('[RoleMiddleware] DENIED - role not in allowed list');
       return res.status(403).json({ message: 'Forbidden' });

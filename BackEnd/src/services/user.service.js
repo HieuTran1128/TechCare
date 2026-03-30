@@ -6,6 +6,9 @@ const cloudinary = require('../config/cloudinary');
 const ROLES = require('../constants/roles.constant');
 const { inviteTemplate } = require('../utils/mailTemplates');
 
+/**
+ * Tạo tài khoản nhân viên mới và gửi email mời kích hoạt.
+ */
 async function createStaff(data) {
   const existed = await User.findOne({ email: data.email });
   if (existed) throw new Error('EMAIL_EXISTS');
@@ -39,6 +42,9 @@ async function createStaff(data) {
   return user;
 }
 
+/**
+ * Tạo nhiều tài khoản nhân viên cùng lúc, bỏ qua các email đã tồn tại hoặc role không hợp lệ.
+ */
 async function createStaffBulk(staffList) {
   if (!Array.isArray(staffList) || staffList.length === 0) {
     throw new Error('STAFF_LIST_REQUIRED');
@@ -97,6 +103,9 @@ async function createStaffBulk(staffList) {
   return results;
 }
 
+/**
+ * Upload ảnh đại diện lên Cloudinary và cập nhật URL avatar cho người dùng.
+ */
 async function uploadAvatar(userId, file) {
   if (!file) throw new Error('FILE_REQUIRED');
 
@@ -116,7 +125,9 @@ async function uploadAvatar(userId, file) {
   return user.avatar;
 }
 
-// Lấy tất cả nhân viên
+/**
+ * Lấy tất cả nhân viên, có thể lọc theo role.
+ */
 async function getAllUsers(role) {
   const query = {};
   console.log('[getAllUsers Service] Input role param:', role, 'type:', typeof role);
@@ -160,6 +171,9 @@ async function getAllUsers(role) {
   }
 }
 
+/**
+ * Cập nhật thông tin cá nhân (họ tên, số điện thoại) của người dùng.
+ */
 async function updateProfile(userId, data) {
   const allowedFields = ['fullName', 'phone'];
 
@@ -185,6 +199,9 @@ async function updateProfile(userId, data) {
   return user;
 }
 
+/**
+ * Xóa tài khoản nhân viên, không cho phép xóa manager hoặc chính mình.
+ */
 async function removeUser(managerId, userId) {
   const user = await User.findById(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
@@ -200,6 +217,9 @@ async function removeUser(managerId, userId) {
   await User.findByIdAndDelete(userId);
 }
 
+/**
+ * Khóa hoặc mở khóa tài khoản nhân viên (không áp dụng cho manager).
+ */
 async function setUserBlocked(userId, blocked) {
   const user = await User.findById(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
@@ -214,6 +234,9 @@ async function setUserBlocked(userId, blocked) {
   return user;
 }
 
+/**
+ * Đổi mật khẩu người dùng sau khi xác minh mật khẩu hiện tại.
+ */
 async function changePassword(userId, currentPassword, newPassword) {
   if (!currentPassword) throw new Error('CURRENT_PASSWORD_REQUIRED');
   if (!newPassword) throw new Error('NEW_PASSWORD_REQUIRED');

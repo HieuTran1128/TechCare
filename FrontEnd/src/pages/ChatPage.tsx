@@ -1,7 +1,10 @@
 import React from 'react';
-import { ChatBox } from '../components/ChatBox';
+import { ChatBox } from '../components/chat/ChatBox';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * Trang chat nội bộ, hiển thị hộp thoại ChatBox cho người dùng hiện tại.
+ */
 export const ChatPage: React.FC = () => {
   const { user } = useAuth();
 

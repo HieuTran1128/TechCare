@@ -1,15 +1,24 @@
-// routes/userSalary.routes.js
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth.middleware');
 const role = require('../middlewares/role.middleware');
-const ROLES = require('../constants/roles.constant'); // Chắc chắn đường dẫn này đúng với dự án của bạn
+const ROLES = require('../constants/roles.constant');
 const userSalaryController = require('../controllers/userSalary.controller');
 
-// Lấy danh sách lương (chỉ Manager)
-router.get('/', auth, role(ROLES.TECHNICIAN, ROLES.STOREKEEPER, ROLES.FRONTDESK, ROLES.MANAGER), userSalaryController.getAllSalaries);
+/** GET /api/salary — Lấy bảng lương tổng hợp của tất cả nhân viên (tất cả role) */
+router.get(
+  '/',
+  auth,
+  role(ROLES.TECHNICIAN, ROLES.STOREKEEPER, ROLES.FRONTDESK, ROLES.MANAGER),
+  userSalaryController.getAllSalaries,
+);
 
-// Cập nhật mức lương cho 1 user cụ thể
-router.put('/:userId', auth, role(ROLES.TECHNICIAN, ROLES.STOREKEEPER, ROLES.FRONTDESK, ROLES.MANAGER), userSalaryController.updateSalary);
+/** PUT /api/salary/:userId — Cập nhật mức lương theo giờ của một nhân viên (tất cả role) */
+router.put(
+  '/:userId',
+  auth,
+  role(ROLES.TECHNICIAN, ROLES.STOREKEEPER, ROLES.FRONTDESK, ROLES.MANAGER),
+  userSalaryController.updateSalary,
+);
 
 module.exports = router;

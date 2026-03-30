@@ -2,9 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Bell, Save, Upload, Loader2, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+import { profileService } from '../services';
 
 const Settings: React.FC = () => {
   const { user, updateAvatar, fetchUserProfile } = useAuth();
@@ -30,6 +28,7 @@ const Settings: React.FC = () => {
     setPhone((user as any)?.phone || '');
   }, [user]);
 
+  /** Upload ảnh đại diện mới: validate file, preview tạm, gọi API upload và refresh profile. */
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -63,6 +62,7 @@ const Settings: React.FC = () => {
     }
   };
 
+  /** Lưu thông tin hồ sơ (họ tên, số điện thoại) và refresh lại user context. */
   const handleSave = async () => {
     if (!fullName.trim()) {
       setProfileError('Họ và tên không được để trống');
@@ -72,15 +72,7 @@ const Settings: React.FC = () => {
     setProfileError(null);
     setIsSavingProfile(true);
     try {
-      await axios.patch(
-        `${API_BASE}/users/profile`,
-        {
-          fullName: fullName.trim(),
-          phone: phone.trim(),
-        },
-        { withCredentials: true },
-      );
-
+      await profileService.update({ fullName: fullName.trim(), phone: phone.trim() });
       await fetchUserProfile();
       toast.success('Đã lưu thông tin hồ sơ');
     } catch (err: any) {
@@ -90,6 +82,7 @@ const Settings: React.FC = () => {
     }
   };
 
+  /** Đổi mật khẩu sau khi validate client-side, reset các input sau khi thành công. */
   const handleChangePassword = async () => {
     if (!currentPassword) {
       setPasswordError('Vui lòng nhập mật khẩu hiện tại');
@@ -111,12 +104,7 @@ const Settings: React.FC = () => {
     setPasswordError(null);
     setIsChangingPassword(true);
     try {
-      await axios.patch(
-        `${API_BASE}/users/password`,
-        { currentPassword, newPassword },
-        { withCredentials: true },
-      );
-
+      await profileService.changePassword({ currentPassword, newPassword });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');

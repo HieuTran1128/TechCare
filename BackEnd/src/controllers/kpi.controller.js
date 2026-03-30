@@ -1,5 +1,8 @@
 const kpiService = require('../services/kpi.service');
 
+/**
+ * Lấy dữ liệu KPI theo khoảng thời gian và cách nhóm (tuần/tháng).
+ */
 exports.getKpi = async (req, res) => {
   try {
     const data = await kpiService.getKpi({

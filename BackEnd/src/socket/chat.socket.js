@@ -3,10 +3,16 @@ const Message = require('../models/message.model');
 
 const onlineUsers = new Map(); // userId -> { userId, fullName, avatar, socketId }
 
+/**
+ * Tạo roomId duy nhất cho cuộc trò chuyện giữa hai người dùng (sắp xếp để đảm bảo nhất quán).
+ */
 function buildRoomId(userA, userB) {
   return [userA, userB].sort().join('__');
 }
 
+/**
+ * Chuyển đổi document tin nhắn từ MongoDB sang định dạng gửi về client.
+ */
 function toClientMessage(doc) {
   return {
     id: String(doc._id),
@@ -24,6 +30,9 @@ function toClientMessage(doc) {
   };
 }
 
+/**
+ * Khởi tạo Socket.io server và đăng ký toàn bộ các sự kiện chat nội bộ.
+ */
 function createChatSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
